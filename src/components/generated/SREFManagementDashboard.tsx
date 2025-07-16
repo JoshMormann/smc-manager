@@ -4,7 +4,7 @@ import * as React from "react";
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { Home, Folder, Package, Compass, Search, Tag, Plus, ChevronDown, ChevronRight, Menu, X } from "lucide-react";
+import { Home, Folder, Package, Compass, Search, Tag, Plus, ChevronDown, ChevronRight, Menu, X, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -109,7 +109,7 @@ export default function SREFManagementDashboard({
   initialFolders = defaultFolders
 }: SREFManagementDashboardProps) {
   // Authentication
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   
   // Real data hooks
   const { 
@@ -346,10 +346,35 @@ export default function SREFManagementDashboard({
           {/* Header with Search and Tag Filter */}
           <header className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
             <div className="p-6 space-y-4">
-              {/* Search Bar */}
-              <div className="relative max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search SREF codes..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10 bg-card border-input focus:ring-2 focus:ring-ring" />
+              <div className="flex items-center justify-between">
+                {/* Search Bar */}
+                <div className="relative max-w-md flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input placeholder="Search SREF codes..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10 bg-card border-input focus:ring-2 focus:ring-ring" />
+                </div>
+                {/* User Actions */}
+                {user && (
+                  <div className="flex items-center gap-4 ml-4">
+                    <span className="text-sm text-muted-foreground">
+                      {user.email}
+                    </span>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          await signOut();
+                        } catch (error) {
+                          console.error('Sign out error:', error);
+                        }
+                      }}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Sign Out
+                    </Button>
+                  </div>
+                )}
               </div>
 
               {/* Tag Cloud Filter */}

@@ -14,7 +14,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signUp: (email: string, password: string, username: string) => Promise<{ error: AuthError | null }>;
   signInWithGoogle: () => Promise<{ error: AuthError | null }>;
-  signInWithGithub: () => Promise<{ error: AuthError | null }>;
+  signInWithDiscord: () => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<{ error: AuthError | null }>;
   updateProfile: (updates: Partial<UserProfile>) => Promise<{ error: AuthError | null }>;
 }
@@ -45,7 +45,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchUserProfile(session.user.id);
+        // Only fetch profile for email/password users, not OAuth users
+        const isOAuthUser = session.user.app_metadata?.provider !== 'email';
+        if (!isOAuthUser) {
+          fetchUserProfile(session.user.id);
+        } else {
+          console.log('OAuth user detected, skipping profile fetch');
+          setProfile(null);
+        }
         // Set user context for Sentry
         setSentryUser({
           id: session.user.id,
@@ -58,11 +65,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state change:', event, session?.user?.email);
+        
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          await fetchUserProfile(session.user.id);
+          // Only fetch profile for email/password users, not OAuth users
+          const isOAuthUser = session.user.app_metadata?.provider !== 'email';
+          if (!isOAuthUser) {
+            await fetchUserProfile(session.user.id);
+          } else {
+            console.log('OAuth user detected, skipping profile fetch');
+            setProfile(null);
+          }
           // Set user context for Sentry
           setSentryUser({
             id: session.user.id,
@@ -89,13 +105,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         .single();
 
       if (error) {
+        // If no profile exists or access is forbidden, it's normal for OAuth users
+        if (error.code === 'PGRST116' || error.code === '42501' || error.message?.includes('permission denied')) {
+          console.log('No user profile found or access denied, this is normal for OAuth users');
+          setProfile(null);
+          return;
+        }
         console.error('Error fetching user profile:', error);
+        setProfile(null);
         return;
       }
 
       setProfile(data);
     } catch (error) {
       console.error('Error fetching user profile:', error);
+      setProfile(null);
     }
   };
 
@@ -154,9 +178,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return { error };
   };
 
-  const signInWithGithub = async () => {
+  const signInWithDiscord = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'github',
+      provider: 'discord',
       options: {
         redirectTo: `${window.location.origin}`,
       },
@@ -195,7 +219,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signIn,
     signUp,
     signInWithGoogle,
-    signInWithGithub,
+    signInWithDiscord,
     signOut,
     updateProfile,
   };

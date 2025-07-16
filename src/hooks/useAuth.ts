@@ -60,18 +60,18 @@ export const useAuth = () => {
     }
   };
 
-  const signInWithGithub = async () => {
+  const signInWithDiscord = async () => {
     try {
-      const result = await auth.signInWithGithub();
+      const result = await auth.signInWithDiscord();
       if (result.error) {
         captureException(result.error, {
-          tags: { action: 'sign_in_github' },
+          tags: { action: 'sign_in_discord' },
         });
       }
       return result;
     } catch (error) {
       captureException(error, {
-        tags: { action: 'sign_in_github' },
+        tags: { action: 'sign_in_discord' },
       });
       throw error;
     }
@@ -124,7 +124,7 @@ export const useAuth = () => {
     signIn,
     signUp,
     signInWithGoogle,
-    signInWithGithub,
+    signInWithDiscord,
     signOut,
     updateProfile,
     isAuthenticated,
