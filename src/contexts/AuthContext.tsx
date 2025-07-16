@@ -41,31 +41,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        // Only fetch profile for email/password users, not OAuth users
-        const isOAuthUser = session.user.app_metadata?.provider !== 'email';
-        if (!isOAuthUser) {
-          fetchUserProfile(session.user.id);
-        } else {
-          console.log('OAuth user detected, skipping profile fetch');
-          setProfile(null);
-        }
-        // Set user context for Sentry
-        setSentryUser({
-          id: session.user.id,
-          email: session.user.email,
-        });
-      }
-      setLoading(false);
-    });
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth state change:', event, session?.user?.email);
+    const initializeAuth = async () => {
+      try {
+        console.log('🔄 InitializeAuth: Starting...');
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log('🔄 InitializeAuth: Got session:', session?.user?.email);
         
         setSession(session);
         setUser(session?.user ?? null);
@@ -73,23 +53,72 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (session?.user) {
           // Only fetch profile for email/password users, not OAuth users
           const isOAuthUser = session.user.app_metadata?.provider !== 'email';
+          console.log('🔄 InitializeAuth: Is OAuth user:', isOAuthUser, 'Provider:', session.user.app_metadata?.provider);
+          
           if (!isOAuthUser) {
+            console.log('🔄 InitializeAuth: Fetching profile for email user...');
             await fetchUserProfile(session.user.id);
           } else {
-            console.log('OAuth user detected, skipping profile fetch');
-            setProfile(null);
+            console.log('🔄 InitializeAuth: Creating OAuth profile...');
+            await createOAuthUserProfile(session.user);
           }
+          
           // Set user context for Sentry
           setSentryUser({
             id: session.user.id,
             email: session.user.email,
           });
-        } else {
-          setProfile(null);
-          // Clear user context for Sentry
-          setSentryUser(null);
         }
+        
+        console.log('🔄 InitializeAuth: Setting loading to false');
         setLoading(false);
+      } catch (error) {
+        console.error('🔄 InitializeAuth: Error:', error);
+        setLoading(false);
+      }
+    };
+    
+    initializeAuth();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        try {
+          console.log('🔄 AuthStateChange: Event:', event, 'Email:', session?.user?.email);
+          
+          setSession(session);
+          setUser(session?.user ?? null);
+          
+          if (session?.user) {
+            // Only fetch profile for email/password users, not OAuth users
+            const isOAuthUser = session.user.app_metadata?.provider !== 'email';
+            console.log('🔄 AuthStateChange: Is OAuth user:', isOAuthUser, 'Provider:', session.user.app_metadata?.provider);
+            
+            if (!isOAuthUser) {
+              console.log('🔄 AuthStateChange: Fetching profile for email user...');
+              await fetchUserProfile(session.user.id);
+            } else {
+              console.log('🔄 AuthStateChange: Creating OAuth profile...');
+              await createOAuthUserProfile(session.user);
+            }
+            
+            // Set user context for Sentry
+            setSentryUser({
+              id: session.user.id,
+              email: session.user.email,
+            });
+          } else {
+            setProfile(null);
+            // Clear user context for Sentry
+            setSentryUser(null);
+          }
+          
+          console.log('🔄 AuthStateChange: Setting loading to false');
+          setLoading(false);
+        } catch (error) {
+          console.error('🔄 AuthStateChange: Error:', error);
+          setLoading(false);
+        }
       }
     );
 
@@ -98,27 +127,108 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const fetchUserProfile = async (userId: string) => {
     try {
+      console.log('🔄 FetchUserProfile: Starting for user:', userId);
+      
       const { data, error } = await supabase
         .from('users')
         .select('*')
         .eq('id', userId)
         .single();
 
+      console.log('🔄 FetchUserProfile: Result:', { data, error });
+
       if (error) {
         // If no profile exists or access is forbidden, it's normal for OAuth users
         if (error.code === 'PGRST116' || error.code === '42501' || error.message?.includes('permission denied')) {
-          console.log('No user profile found or access denied, this is normal for OAuth users');
+          console.log('🔄 FetchUserProfile: No profile found or access denied (normal for OAuth users)');
           setProfile(null);
           return;
         }
-        console.error('Error fetching user profile:', error);
+        console.error('🔄 FetchUserProfile: Error fetching profile:', error);
         setProfile(null);
         return;
       }
 
+      console.log('🔄 FetchUserProfile: Profile found, setting it');
       setProfile(data);
     } catch (error) {
-      console.error('Error fetching user profile:', error);
+      console.error('🔄 FetchUserProfile: Catch error:', error);
+      setProfile(null);
+    }
+  };
+
+  const createOAuthUserProfile = async (user: User) => {
+    try {
+      console.log('🔄 CreateOAuthProfile: Starting for user:', user.id);
+      
+      // Check if profile already exists - but don't wait too long
+      console.log('🔄 CreateOAuthProfile: Checking for existing profile...');
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Profile check timeout')), 5000)
+      );
+      
+      const checkPromise = supabase
+        .from('users')
+        .select('id, email, username, tier, waitlist_status, created_at, updated_at')
+        .eq('id', user.id)
+        .maybeSingle(); // Use maybeSingle instead of single to avoid errors if not found
+
+      const { data: existingProfile, error: checkError } = await Promise.race([
+        checkPromise,
+        timeoutPromise
+      ]) as any;
+
+      console.log('🔄 CreateOAuthProfile: Check result:', { existingProfile, checkError });
+
+      // If profile exists, use it
+      if (existingProfile && !checkError) {
+        console.log('🔄 CreateOAuthProfile: Profile already exists, setting it');
+        setProfile(existingProfile);
+        return;
+      }
+
+      // If there's an error other than not found, just set profile to null and continue
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.log('🔄 CreateOAuthProfile: Error checking profile, but continuing:', checkError);
+        setProfile(null);
+        return;
+      }
+
+      // Create profile for OAuth user
+      console.log('🔄 CreateOAuthProfile: Creating new profile...');
+      const { data, error } = await supabase
+        .from('users')
+        .insert({
+          id: user.id,
+          email: user.email,
+          username: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+          tier: 'miner',
+          waitlist_status: 'none'
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('🔄 CreateOAuthProfile: Error creating profile:', error);
+        // If profile already exists (duplicate key), try to fetch it
+        if (error.code === '23505') {
+          console.log('🔄 CreateOAuthProfile: Profile already exists, fetching it...');
+          const { data: fetchedProfile } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+          setProfile(fetchedProfile);
+          return;
+        }
+        setProfile(null);
+        return;
+      }
+
+      console.log('🔄 CreateOAuthProfile: Created profile successfully:', data);
+      setProfile(data);
+    } catch (error) {
+      console.error('🔄 CreateOAuthProfile: Catch error:', error);
       setProfile(null);
     }
   };

@@ -132,13 +132,20 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
     setIsSubmitting(true);
     
     try {
+      console.log('Starting form submission...');
+      console.log('User ID:', user.id);
+      console.log('Form data:', formData);
+      console.log('Image files:', imageFiles);
+      
       let uploadedImageUrls: string[] = [];
       
       // Upload new images if any
       if (imageFiles.length > 0) {
         toast.info('Uploading images...');
+        console.log('Uploading images...');
         const uploadedImages = await uploadImages(imageFiles);
         uploadedImageUrls = uploadedImages.map(img => img.url);
+        console.log('Uploaded image URLs:', uploadedImageUrls);
       }
       
       // Combine existing images with newly uploaded ones
@@ -152,20 +159,30 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
         images: allImageUrls,
         user_id: user.id
       };
+      
+      console.log('SREF data to submit:', srefData);
 
       if (editingCode) {
         const { error } = await updateSREFCode(editingCode.id, srefData);
-        if (error) throw error;
+        if (error) {
+          console.error('Update SREF code error:', error);
+          throw error;
+        }
         toast.success('SREF code updated successfully!');
       } else {
         const { error } = await createSREFCode(srefData);
-        if (error) throw error;
+        if (error) {
+          console.error('Create SREF code error:', error);
+          throw error;
+        }
         toast.success('SREF code created successfully!');
       }
       
       onSuccess?.();
     } catch (error: unknown) {
-      toast.error(`Failed to ${editingCode ? 'update' : 'create'} SREF code: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('Form submission error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Failed to ${editingCode ? 'update' : 'create'} SREF code: ${errorMessage}`);
     } finally {
       setIsSubmitting(false);
     }

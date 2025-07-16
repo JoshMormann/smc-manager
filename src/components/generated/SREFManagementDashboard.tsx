@@ -217,6 +217,8 @@ export default function SREFManagementDashboard({
   const handleEditSuccess = () => {
     setIsEditModalOpen(false);
     setEditingCode(null);
+    // Refresh the SREF codes list to show the new/updated code
+    refreshSREFCodes();
   };
 
   // Handle card delete
@@ -352,9 +354,16 @@ export default function SREFManagementDashboard({
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input placeholder="Search SREF codes..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10 bg-card border-input focus:ring-2 focus:ring-ring" />
                 </div>
-                {/* User Actions */}
+                {/* Action Buttons */}
                 {user && (
                   <div className="flex items-center gap-4 ml-4">
+                    <Button 
+                      onClick={handleAddNew}
+                      className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add SREF Code
+                    </Button>
                     <span className="text-sm text-muted-foreground">
                       {user.email}
                     </span>
