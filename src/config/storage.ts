@@ -3,7 +3,7 @@
 
 export const STORAGE_CONFIG = {
   // Your actual bucket name from Supabase project
-  bucketName: 'code images',
+  bucketName: 'code-images',
   
   // File upload limits
   maxFileSize: 5 * 1024 * 1024, // 5MB

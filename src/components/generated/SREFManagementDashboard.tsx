@@ -30,10 +30,9 @@ export interface SREFCode {
   code_value?: string;
   version: "SV4" | "SV6";
   sv_version?: number;
-  images: string[];
+  images: Array<{id: string; image_url: string; position: number}>;
   tags: string[];
   createdAt: Date;
-  description?: string;
 }
 export interface FolderItem {
   id: string;
@@ -59,7 +58,11 @@ const defaultSREFCodes: SREFCode[] = [{
   title: "90's comic book",
   code: "--sref 1234567890",
   version: "SV6",
-  images: ["https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=300&h=200&fit=crop", "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=300&h=200&fit=crop", "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=300&h=200&fit=crop"],
+  images: [
+    {id: "1", image_url: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=300&h=200&fit=crop", position: 0},
+    {id: "2", image_url: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=300&h=200&fit=crop", position: 1},
+    {id: "3", image_url: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=300&h=200&fit=crop", position: 2}
+  ],
   tags: ["comic", "retro", "colorful"],
   createdAt: new Date()
 }, {
@@ -67,7 +70,11 @@ const defaultSREFCodes: SREFCode[] = [{
   title: "Cyberpunk neon",
   code: "--sref 9876543210",
   version: "SV4",
-  images: ["https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=300&h=200&fit=crop", "https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=300&h=200&fit=crop", "https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=300&h=200&fit=crop"],
+  images: [
+    {id: "4", image_url: "https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=300&h=200&fit=crop", position: 0},
+    {id: "5", image_url: "https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=300&h=200&fit=crop", position: 1},
+    {id: "6", image_url: "https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=300&h=200&fit=crop", position: 2}
+  ],
   tags: ["cyberpunk", "neon", "futuristic"],
   createdAt: new Date()
 }, {
@@ -75,7 +82,11 @@ const defaultSREFCodes: SREFCode[] = [{
   title: "Vintage photography",
   code: "--sref 5555555555",
   version: "SV6",
-  images: ["https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=300&h=200&fit=crop", "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=300&h=200&fit=crop", "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=300&h=200&fit=crop"],
+  images: [
+    {id: "7", image_url: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=300&h=200&fit=crop", position: 0},
+    {id: "8", image_url: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=300&h=200&fit=crop", position: 1},
+    {id: "9", image_url: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=300&h=200&fit=crop", position: 2}
+  ],
   tags: ["vintage", "photography", "sepia"],
   createdAt: new Date()
 }];
@@ -117,7 +128,8 @@ export default function SREFManagementDashboard({
     loading: srefLoading, 
     error: srefError,
     searchSREFCodes: _searchSREFCodes,
-    deleteSREFCode 
+    deleteSREFCode,
+    refreshSREFCodes
   } = useSREFCodes();
   
   const { 
@@ -198,10 +210,9 @@ export default function SREFManagementDashboard({
         id: codeRecord.id,
         title: codeRecord.title,
         code_value: codeRecord.code_value || codeRecord.code,
-        description: codeRecord.description,
         version: codeRecord.version || (codeRecord.sv_version === 6 ? 'SV6' : 'SV4'),
         tags: codeRecord.tags || [],
-        images: codeRecord.images || []
+        images: codeRecord.images?.map((img: any) => typeof img === 'string' ? img : img.image_url) || []
       });
       setIsEditModalOpen(true);
     }

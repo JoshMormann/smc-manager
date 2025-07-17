@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { useSREFCodes } from '@/hooks/useSREFCodes';
@@ -38,7 +37,6 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
   const [formData, setFormData] = useState({
     title: editingCode?.title || '',
     code_value: editingCode?.code_value || '',
-    description: editingCode?.description || '',
     version: editingCode?.version || 'SV6' as const,
     tags: editingCode?.tags || [],
     images: editingCode?.images || []
@@ -243,17 +241,6 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
               </Select>
             </div>
 
-            {/* Description */}
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => handleInputChange('description', e.target.value)}
-                placeholder="Optional description of the style..."
-                rows={3}
-              />
-            </div>
 
             {/* Tags */}
             <div className="space-y-2">

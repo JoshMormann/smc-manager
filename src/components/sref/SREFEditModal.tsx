@@ -12,7 +12,6 @@ interface SREFEditModalProps {
     id: string;
     title: string;
     code_value: string;
-    description?: string;
     version: 'SV4' | 'SV6';
     tags: string[];
     images?: string[];
