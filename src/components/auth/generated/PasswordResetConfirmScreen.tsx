@@ -56,7 +56,7 @@ export default function PasswordResetConfirmScreen({
   isLoading = false,
   error = null,
   success = false,
-  _resetToken = ""
+  resetToken = ""
 }: PasswordResetConfirmScreenProps) {
   // Form state
   const [newPassword, setNewPassword] = useState("");

@@ -58,7 +58,7 @@ export class SREFCodeService {
       return { data: transformedCodes, error: null };
     } catch (error) {
       captureException(error, { tags: { operation: 'get_user_sref_codes' } });
-      return { data: null, error };
+      return { data: null, error: error as Error };
     }
   }
 
@@ -95,7 +95,7 @@ export class SREFCodeService {
       return { data: transformedCode, error: null };
     } catch (error) {
       captureException(error, { tags: { operation: 'get_sref_code_by_id' } });
-      return { data: null, error };
+      return { data: null, error: error as Error };
     }
   }
 
@@ -158,7 +158,7 @@ export class SREFCodeService {
       return await this.getSREFCodeById(newCode.id);
     } catch (error) {
       captureException(error, { tags: { operation: 'create_sref_code' } });
-      return { data: null, error };
+      return { data: null, error: error as Error };
     }
   }
 
@@ -238,7 +238,7 @@ export class SREFCodeService {
       return await this.getSREFCodeById(codeId);
     } catch (error) {
       captureException(error, { tags: { operation: 'update_sref_code' } });
-      return { data: null, error };
+      return { data: null, error: error as Error };
     }
   }
 
@@ -258,7 +258,7 @@ export class SREFCodeService {
       return { error };
     } catch (error) {
       captureException(error, { tags: { operation: 'delete_sref_code' } });
-      return { error };
+      return { error: error as Error };
     }
   }
 
@@ -310,7 +310,7 @@ export class SREFCodeService {
       return { data: transformedCodes, error: null };
     } catch (error) {
       captureException(error, { tags: { operation: 'search_sref_codes' } });
-      return { data: null, error };
+      return { data: null, error: error as Error };
     }
   }
 
@@ -349,7 +349,7 @@ export class SREFCodeService {
       return { data: uniqueTags, error: null };
     } catch (error) {
       captureException(error, { tags: { operation: 'get_user_tags' } });
-      return { data: null, error };
+      return { data: null, error: error as Error };
     }
   }
 }
@@ -373,7 +373,7 @@ export class FolderService {
       return { data: folders, error: null };
     } catch (error) {
       captureException(error, { tags: { operation: 'get_user_folders' } });
-      return { data: null, error };
+      return { data: null, error: error as Error };
     }
   }
 
@@ -394,7 +394,7 @@ export class FolderService {
       return { data: newFolder, error: null };
     } catch (error) {
       captureException(error, { tags: { operation: 'create_folder' } });
-      return { data: null, error };
+      return { data: null, error: error as Error };
     }
   }
 
@@ -419,7 +419,7 @@ export class FolderService {
       return { data: updatedFolder, error: null };
     } catch (error) {
       captureException(error, { tags: { operation: 'update_folder' } });
-      return { data: null, error };
+      return { data: null, error: error as Error };
     }
   }
 
@@ -438,7 +438,7 @@ export class FolderService {
       return { error };
     } catch (error) {
       captureException(error, { tags: { operation: 'delete_folder' } });
-      return { error };
+      return { error: error as Error };
     }
   }
 }

@@ -18,7 +18,10 @@ export const useTags = (): UseTagsReturn => {
 
   // Fetch all tags for the current user
   const fetchTags = useCallback(async () => {
-    if (!user) return;
+    if (!user || !user.id) {
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     setError(null);

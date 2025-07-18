@@ -1,11 +1,14 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import themeSettings from './settings/theme';
 import { Theme } from './settings/types';
 import SREFManagementDashboard from './components/generated/SREFManagementDashboard.tsx';
 import { AuthProvider } from './contexts/AuthContext';
 import { AuthGate } from './components/auth/AuthGate';
+import { useSystemTheme } from './hooks/useSystemTheme';
 
 function App() {
+  const systemTheme = useSystemTheme();
+  
   function setTheme(theme: Theme) {
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
@@ -14,7 +17,10 @@ function App() {
     }
   }
 
-  setTheme(themeSettings.theme);
+  // Use system theme instead of static theme
+  useEffect(() => {
+    setTheme(systemTheme);
+  }, [systemTheme]);
 
   const generatedComponent = useMemo(() => {
     // THIS IS WHERE THE TOP LEVEL GENRATED COMPONENT WILL BE RETURNED!

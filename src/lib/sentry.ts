@@ -35,11 +35,22 @@ export const initSentry = () => {
   });
 };
 
-export const captureException = Sentry.captureException;
-export const captureMessage = Sentry.captureMessage;
-export const setUser = Sentry.setUser;
-export const setContext = Sentry.setContext;
-export const addBreadcrumb = Sentry.addBreadcrumb;
+// Temporarily disable Sentry functions for debugging
+export const captureException = (error: any, context?: any) => {
+  console.log('Sentry captureException (disabled):', error, context);
+};
+export const captureMessage = (message: string, level?: any) => {
+  console.log('Sentry captureMessage (disabled):', message, level);
+};
+export const setUser = (user: any) => {
+  console.log('Sentry setUser (disabled):', user);
+};
+export const setContext = (key: string, context: any) => {
+  console.log('Sentry setContext (disabled):', key, context);
+};
+export const addBreadcrumb = (breadcrumb: any) => {
+  console.log('Sentry addBreadcrumb (disabled):', breadcrumb);
+};
 
 // Custom error boundary component
 export const SentryErrorBoundary = Sentry.ErrorBoundary;

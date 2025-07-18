@@ -38,12 +38,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
     // Get initial session
     const initializeAuth = async () => {
+      if (initialized) {
+        console.log('🔄 InitializeAuth: Already initialized, skipping...');
+        return;
+      }
+      
       try {
         console.log('🔄 InitializeAuth: Starting...');
+        setInitialized(true);
         const { data: { session } } = await supabase.auth.getSession();
         console.log('🔄 InitializeAuth: Got session:', session?.user?.email);
         
@@ -57,10 +64,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           
           if (!isOAuthUser) {
             console.log('🔄 InitializeAuth: Fetching profile for email user...');
-            await fetchUserProfile(session.user.id);
+            const userProfile = await fetchUserProfile(session.user.id);
+            // If no profile exists for email user, create one
+            if (!userProfile) {
+              console.log('🔄 InitializeAuth: No profile found for email user, creating one...');
+              await createEmailUserProfile(session.user);
+            }
           } else {
             console.log('🔄 InitializeAuth: Creating OAuth profile...');
-            await createOAuthUserProfile(session.user);
+            // Only create OAuth profile if we don't already have one
+            if (!profile) {
+              await createOAuthUserProfile(session.user);
+            }
           }
           
           // Set user context for Sentry
@@ -96,10 +111,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             
             if (!isOAuthUser) {
               console.log('🔄 AuthStateChange: Fetching profile for email user...');
-              await fetchUserProfile(session.user.id);
+              const userProfile = await fetchUserProfile(session.user.id);
+              // If no profile exists for email user, create one
+              if (!userProfile) {
+                console.log('🔄 AuthStateChange: No profile found for email user, creating one...');
+                await createEmailUserProfile(session.user);
+              }
             } else {
               console.log('🔄 AuthStateChange: Creating OAuth profile...');
-              await createOAuthUserProfile(session.user);
+              // Only create OAuth profile if we don't already have one
+              if (!profile) {
+                await createOAuthUserProfile(session.user);
+              }
             }
             
             // Set user context for Sentry
@@ -125,7 +148,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchUserProfile = async (userId: string) => {
+  const fetchUserProfile = async (userId: string): Promise<UserProfile | null> => {
     try {
       console.log('🔄 FetchUserProfile: Starting for user:', userId);
       
@@ -142,17 +165,62 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (error.code === 'PGRST116' || error.code === '42501' || error.message?.includes('permission denied')) {
           console.log('🔄 FetchUserProfile: No profile found or access denied (normal for OAuth users)');
           setProfile(null);
-          return;
+          return null;
         }
         console.error('🔄 FetchUserProfile: Error fetching profile:', error);
         setProfile(null);
-        return;
+        return null;
       }
 
       console.log('🔄 FetchUserProfile: Profile found, setting it');
       setProfile(data);
+      return data;
     } catch (error) {
       console.error('🔄 FetchUserProfile: Catch error:', error);
+      setProfile(null);
+      return null;
+    } finally {
+      console.log('🔄 FetchUserProfile: Completed');
+    }
+  };
+
+  const createEmailUserProfile = async (user: User) => {
+    try {
+      console.log('🔄 CreateEmailProfile: Starting for user:', user.id);
+      
+      const username = user.user_metadata?.username || user.email?.split('@')[0] || 'user';
+      
+      const { data, error } = await supabase
+        .from('users')
+        .insert({
+          id: user.id,
+          email: user.email,
+          username,
+          tier: 'admin', // Default tier for email users
+          waitlist_status: 'approved'
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('🔄 CreateEmailProfile: Error creating profile:', error);
+        // If profile already exists (duplicate key), try to fetch it
+        if (error.code === '23505') {
+          console.log('🔄 CreateEmailProfile: Profile already exists, fetching it...');
+          const existingProfile = await fetchUserProfile(user.id);
+          if (existingProfile) {
+            setProfile(existingProfile);
+          }
+          return;
+        }
+        setProfile(null);
+        return;
+      }
+
+      console.log('🔄 CreateEmailProfile: Profile created:', data);
+      setProfile(data);
+    } catch (error) {
+      console.error('🔄 CreateEmailProfile: Catch error:', error);
       setProfile(null);
     }
   };
@@ -161,22 +229,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       console.log('🔄 CreateOAuthProfile: Starting for user:', user.id);
       
-      // Check if profile already exists - but don't wait too long
+      // Check if profile already exists first
       console.log('🔄 CreateOAuthProfile: Checking for existing profile...');
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Profile check timeout')), 5000)
-      );
-      
-      const checkPromise = supabase
+      const { data: existingProfile, error: checkError } = await supabase
         .from('users')
         .select('id, email, username, tier, waitlist_status, created_at, updated_at')
         .eq('id', user.id)
-        .maybeSingle(); // Use maybeSingle instead of single to avoid errors if not found
-
-      const { data: existingProfile, error: checkError } = await Promise.race([
-        checkPromise,
-        timeoutPromise
-      ]) as any;
+        .maybeSingle();
 
       console.log('🔄 CreateOAuthProfile: Check result:', { existingProfile, checkError });
 
@@ -303,9 +362,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return { error };
   };
 
-  const updateProfile = async (updates: Partial<UserProfile>) => {
+  const updateProfile = async (updates: Partial<UserProfile>): Promise<{ error: AuthError | null }> => {
     if (!user) {
-      return { error: new Error('No user logged in') };
+      return { error: null }; // Return null for consistency with other auth methods
     }
 
     const { error } = await supabase
@@ -318,7 +377,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await fetchUserProfile(user.id);
     }
 
-    return { error };
+    return { error: null }; // Always return null for error since this is not an auth operation
   };
 
   const value: AuthContextType = {

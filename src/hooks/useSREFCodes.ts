@@ -28,7 +28,10 @@ export const useSREFCodes = (): UseSREFCodesReturn => {
 
   // Fetch all SREF codes for the current user
   const fetchSREFCodes = useCallback(async () => {
-    if (!user) return;
+    if (!user || !user.id) {
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -63,7 +66,7 @@ export const useSREFCodes = (): UseSREFCodesReturn => {
 
   // Create a new SREF code
   const createSREFCode = useCallback(async (srefCode: Omit<SREFCodeInsert, 'user_id'>) => {
-    if (!user) {
+    if (!user || !user.id) {
       return { success: false, error: 'User not authenticated' };
     }
 
@@ -107,7 +110,7 @@ export const useSREFCodes = (): UseSREFCodesReturn => {
 
   // Update an existing SREF code
   const updateSREFCode = useCallback(async (codeId: string, updates: SREFCodeUpdate) => {
-    if (!user) {
+    if (!user || !user.id) {
       return { success: false, error: 'User not authenticated' };
     }
 
@@ -148,7 +151,7 @@ export const useSREFCodes = (): UseSREFCodesReturn => {
 
   // Delete an SREF code
   const deleteSREFCode = useCallback(async (codeId: string) => {
-    if (!user) {
+    if (!user || !user.id) {
       return { success: false, error: 'User not authenticated' };
     }
 
@@ -185,7 +188,7 @@ export const useSREFCodes = (): UseSREFCodesReturn => {
 
   // Search SREF codes
   const searchSREFCodes = useCallback(async (query: string, tags: string[] = []) => {
-    if (!user) return;
+    if (!user || !user.id) return;
 
     setLoading(true);
     setError(null);

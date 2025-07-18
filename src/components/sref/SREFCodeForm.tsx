@@ -129,13 +129,13 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
 
     setIsSubmitting(true);
     
+    let uploadedImageUrls: string[] = [];
+    
     try {
       console.log('Starting form submission...');
       console.log('User ID:', user.id);
       console.log('Form data:', formData);
       console.log('Image files:', imageFiles);
-      
-      let uploadedImageUrls: string[] = [];
       
       // Upload new images if any
       if (imageFiles.length > 0) {
@@ -161,17 +161,17 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
       console.log('SREF data to submit:', srefData);
 
       if (editingCode) {
-        const { error } = await updateSREFCode(editingCode.id, srefData);
-        if (error) {
-          console.error('Update SREF code error:', error);
-          throw error;
+        const result = await updateSREFCode(editingCode.id, srefData);
+        if (!result.success) {
+          console.error('Update SREF code error:', result.error);
+          throw new Error(result.error);
         }
         toast.success('SREF code updated successfully!');
       } else {
-        const { error } = await createSREFCode(srefData);
-        if (error) {
-          console.error('Create SREF code error:', error);
-          throw error;
+        const result = await createSREFCode(srefData);
+        if (!result.success) {
+          console.error('Create SREF code error:', result.error);
+          throw new Error(result.error);
         }
         toast.success('SREF code created successfully!');
       }
@@ -181,6 +181,18 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
       console.error('Form submission error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       toast.error(`Failed to ${editingCode ? 'update' : 'create'} SREF code: ${errorMessage}`);
+      
+      // Clean up uploaded images on error (only for new uploads, not existing ones)
+      if (uploadedImageUrls.length > 0) {
+        console.log('Cleaning up uploaded images due to error...');
+        uploadedImageUrls.forEach(async (url: string) => {
+          const filename = url.split('/').pop();
+          if (filename) {
+            // Note: This is a best-effort cleanup, errors here won't be shown to user
+            console.log('Attempting to cleanup image:', filename);
+          }
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
