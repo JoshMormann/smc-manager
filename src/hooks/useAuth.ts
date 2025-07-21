@@ -96,6 +96,42 @@ export const useAuth = () => {
     }
   };
 
+  const resetPassword = async (email: string) => {
+    try {
+      const result = await auth.resetPassword(email);
+      if (result.error) {
+        captureException(result.error, {
+          tags: { action: 'reset_password' },
+          extra: { email },
+        });
+      }
+      return result;
+    } catch (error) {
+      captureException(error, {
+        tags: { action: 'reset_password' },
+        extra: { email },
+      });
+      throw error;
+    }
+  };
+
+  const updatePassword = async (password: string) => {
+    try {
+      const result = await auth.updatePassword(password);
+      if (result.error) {
+        captureException(result.error, {
+          tags: { action: 'update_password' },
+        });
+      }
+      return result;
+    } catch (error) {
+      captureException(error, {
+        tags: { action: 'update_password' },
+      });
+      throw error;
+    }
+  };
+
   const updateProfile = async (updates: Parameters<typeof updateUserProfile>[0]) => {
     try {
       const result = await updateUserProfile(updates);
@@ -129,6 +165,8 @@ export const useAuth = () => {
     signInWithGoogle,
     signInWithDiscord,
     signOut,
+    resetPassword,
+    updatePassword,
     updateProfile,
     isAuthenticated,
     isAdmin,

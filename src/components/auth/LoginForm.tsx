@@ -10,9 +10,10 @@ import { useAuth } from '@/hooks/useAuth';
 
 interface LoginFormProps {
   onToggleForm: () => void;
+  onForgotPassword?: () => void;
 }
 
-export const LoginForm: React.FC<LoginFormProps> = ({ onToggleForm }) => {
+export const LoginForm: React.FC<LoginFormProps> = ({ onToggleForm, onForgotPassword }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -126,6 +127,23 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onToggleForm }) => {
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <label className="flex items-center space-x-2 text-sm">
+              <input type="checkbox" className="rounded" />
+              <span className="text-muted-foreground">Remember me</span>
+            </label>
+            {onForgotPassword && (
+              <button
+                type="button"
+                onClick={onForgotPassword}
+                className="text-sm text-red-400 hover:text-red-300 font-medium"
+                disabled={loading}
+              >
+                Forgot password?
+              </button>
+            )}
           </div>
 
           <Button type="submit" className="w-full" disabled={loading}>
