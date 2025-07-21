@@ -1,8 +1,10 @@
 import { useAuth as useAuthContext } from '../contexts/AuthContext';
+import { useUserProfile } from './useUserProfile';
 import { captureException } from '../lib/sentry';
 
 export const useAuth = () => {
   const auth = useAuthContext();
+  const { profile, updateProfile: updateUserProfile } = useUserProfile(auth.user);
 
   // Wrapper functions with error handling and Sentry integration
   const signIn = async (email: string, password: string) => {
@@ -94,16 +96,16 @@ export const useAuth = () => {
     }
   };
 
-  const updateProfile = async (updates: Parameters<typeof auth.updateProfile>[0]) => {
+  const updateProfile = async (updates: Parameters<typeof updateUserProfile>[0]) => {
     try {
-      const result = await auth.updateProfile(updates);
+      const result = await updateUserProfile(updates);
       if (result.error) {
-        captureException(result.error, {
+        captureException(new Error(result.error), {
           tags: { action: 'update_profile' },
           extra: { updates },
         });
       }
-      return result;
+      return { error: result.error ? new Error(result.error) : null };
     } catch (error) {
       captureException(error, {
         tags: { action: 'update_profile' },
@@ -115,12 +117,13 @@ export const useAuth = () => {
 
   // Computed properties for convenience
   const isAuthenticated = !!auth.user;
-  const isAdmin = auth.profile?.tier === 'admin';
-  const isMiner = auth.profile?.tier === 'miner';
-  const isOnWaitlist = auth.profile?.waitlist_status === 'pending';
+  const isAdmin = profile?.tier === 'admin';
+  const isMiner = profile?.tier === 'miner';
+  const isOnWaitlist = profile?.waitlist_status === 'pending';
 
   return {
     ...auth,
+    profile,
     signIn,
     signUp,
     signInWithGoogle,

@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { useSREFCodes } from "@/hooks/useSREFCodes";
 import { useTags } from "@/hooks/useTags";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserProfile } from "@/hooks/useUserProfile";
 import SREFEditModal from "@/components/sref/SREFEditModal";
 import StorageDebugPanel from "@/components/debug/StorageDebugPanel";
 
@@ -121,6 +122,7 @@ export default function SREFManagementDashboard({
 }: SREFManagementDashboardProps) {
   // Authentication
   const { user, signOut } = useAuth();
+  const { profile } = useUserProfile(user);
   
   // Real data hooks
   const { 
