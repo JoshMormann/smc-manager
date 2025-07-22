@@ -33,6 +33,15 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  // Original state for change detection (only for editing)
+  const originalState = useRef(editingCode ? {
+    title: editingCode.title,
+    code_value: editingCode.code_value,
+    version: editingCode.version,
+    tags: [...editingCode.tags],
+    images: [...(editingCode.images || [])]
+  } : null);
+  
   // Form state
   const [formData, setFormData] = useState({
     title: editingCode?.title || '',
@@ -45,6 +54,48 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
   const [newTag, setNewTag] = useState('');
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>(editingCode?.images || []);
+
+  // Change detection functions
+  const hasTextFieldsChanged = () => {
+    if (!originalState.current) return true; // New creation - always include
+    return (
+      formData.title !== originalState.current.title ||
+      formData.code_value !== originalState.current.code_value ||
+      formData.version !== originalState.current.version
+    );
+  };
+
+  const hasTagsChanged = () => {
+    if (!originalState.current) return true; // New creation - always include
+    const original = originalState.current.tags.slice().sort();
+    const current = formData.tags.slice().sort();
+    return original.length !== current.length || 
+           !original.every((tag, index) => tag === current[index]);
+  };
+
+  const hasImagesChanged = () => {
+    if (!originalState.current) return true; // New creation - always include
+    
+    // Get current image URLs (existing images from formData.images, not imagePreviews)
+    const currentImageUrls = formData.images;
+    const originalImages = originalState.current.images;
+    
+    // Check if we have new files or if existing images changed
+    const hasNewFiles = imageFiles.length > 0;
+    const quantityChanged = currentImageUrls.length !== originalImages.length;
+    const contentChanged = !currentImageUrls.every((url, index) => url === originalImages[index]);
+    
+    console.log('🔍 Image change analysis:', {
+      hasNewFiles,
+      quantityChanged,
+      contentChanged,
+      originalCount: originalImages.length,
+      currentCount: currentImageUrls.length,
+      newFilesCount: imageFiles.length
+    });
+    
+    return hasNewFiles || quantityChanged || contentChanged;
+  };
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -87,17 +138,22 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
   };
 
   const handleRemoveImage = (index: number) => {
+    // Remove from previews
     setImagePreviews(prev => prev.filter((_, i) => i !== index));
-    if (index < formData.images.length) {
-      // Removing existing image
+    
+    // Determine if this is an existing image or a new file
+    if (index < (originalState.current?.images.length || 0)) {
+      // Removing existing image - update formData.images to track what's been removed
       setFormData(prev => ({
         ...prev,
         images: prev.images.filter((_, i) => i !== index)
       }));
+      console.log('🗑️ Removed existing image at index:', index);
     } else {
       // Removing new file
-      const fileIndex = index - formData.images.length;
+      const fileIndex = index - (originalState.current?.images.length || 0);
       setImageFiles(prev => prev.filter((_, i) => i !== fileIndex));
+      console.log('🗑️ Removed new file at index:', fileIndex);
     }
   };
 
@@ -146,17 +202,65 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
         console.log('Uploaded image URLs:', uploadedImageUrls);
       }
       
-      // Combine existing images with newly uploaded ones
-      const allImageUrls = [...(formData.images || []), ...uploadedImageUrls];
+      // Determine what fields have actually changed
+      const textFieldsChanged = hasTextFieldsChanged();
+      const tagsChanged = hasTagsChanged();
+      const imagesChanged = hasImagesChanged();
       
-      const srefData = {
-        title: formData.title.trim(),
-        code_value: formData.code_value.trim(),
-        sv_version: formData.version === 'SV6' ? 6 : 4,
-        tags: formData.tags,
-        images: allImageUrls,
-        user_id: user.id
+      console.log('🔍 Change detection results:', {
+        textFieldsChanged,
+        tagsChanged,
+        imagesChanged,
+        isNewCreation: !editingCode
+      });
+      
+      // Build selective update payload - only include changed fields
+      const srefData: any = {
+        user_id: user.id // Always include user_id
       };
+      
+      // Only include text fields if they changed
+      if (textFieldsChanged) {
+        srefData.title = formData.title.trim();
+        srefData.code_value = formData.code_value.trim();
+        srefData.sv_version = formData.version === 'SV6' ? 6 : 4;
+        console.log('📝 Including text fields in update');
+      }
+      
+      // Only include tags if they changed
+      if (tagsChanged) {
+        // TODO: Implement tag diffing for granular updates
+        // Current approach: Replace all tags (inefficient)
+        // Tomorrow: Compare original vs current tags, only add/remove changed ones
+        // Example: original: ['tag1', 'tag2', 'tag3'], current: ['tag1', 'tag3', 'tag4']
+        // Should: DELETE 'tag2', INSERT 'tag4', leave 'tag1' and 'tag3' untouched
+        srefData.tags = formData.tags;
+        console.log('🏷️ Including tags in update:', formData.tags);
+      }
+      
+      // Only include images if they changed
+      if (imagesChanged) {
+        // TODO: CRITICAL - Implement UUID-based image diffing for granular updates
+        // CURRENT PROBLEM: Still using "delete all, re-insert all" approach in backend
+        // This causes duplication when delete fails (returns count 0)
+        // 
+        // TOMORROW'S FIX:
+        // 1. Compare originalState.current.images vs formData.images by UUID/URL
+        // 2. Identify specifically removed images: send { imagesToDelete: [uuid1, uuid2] }
+        // 3. Identify specifically added images: send { imagesToAdd: [newUrl1, newUrl2] }
+        // 4. Backend should delete only specific UUIDs, insert only new images
+        // 5. Leave unchanged images completely untouched
+        //
+        // Example: original: [img1, img2, img3], current: [img1, img3, img4]
+        // Should: DELETE img2, INSERT img4, leave img1 and img3 untouched
+        // Result: 3 images total (not 5!)
+        
+        const allImageUrls = [...formData.images, ...uploadedImageUrls];
+        srefData.images = allImageUrls;
+        console.log('📸 Including images in update:', allImageUrls);
+        console.log('📸 Current formData.images:', formData.images);
+        console.log('📸 New uploaded images:', uploadedImageUrls);
+      }
       
       console.log('SREF data to submit:', srefData);
 
@@ -214,16 +318,30 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Title */}
-            <div className="space-y-2">
-              <Label htmlFor="title">Title *</Label>
-              <Input
-                id="title"
-                value={formData.title}
-                onChange={(e) => handleInputChange('title', e.target.value)}
-                placeholder="e.g., 90's comic book style"
-                required
-              />
+            {/* Title and Version Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="title">Title *</Label>
+                <Input
+                  id="title"
+                  value={formData.title}
+                  onChange={(e) => handleInputChange('title', e.target.value)}
+                  placeholder="e.g., 90's comic book style"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="version">Version *</Label>
+                <Select value={formData.version} onValueChange={(value: 'SV4' | 'SV6') => handleInputChange('version', value)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="SV6">SV6</SelectItem>
+                    <SelectItem value="SV4">SV4</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {/* SREF Code */}
@@ -237,20 +355,6 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
                 className="font-mono"
                 required
               />
-            </div>
-
-            {/* Version */}
-            <div className="space-y-2">
-              <Label htmlFor="version">Midjourney Version</Label>
-              <Select value={formData.version} onValueChange={(value: 'SV4' | 'SV6') => handleInputChange('version', value)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="SV6">Style Version 6 (SV6)</SelectItem>
-                  <SelectItem value="SV4">Style Version 4 (SV4)</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
 
 
@@ -333,8 +437,9 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
                       >
                         <img
                           src={preview}
-                          alt={`Preview ${index + 1}`}
+                          alt={`${formData.title || 'SREF'} reference image ${index + 1} of ${imagePreviews.length}`}
                           className="w-full h-full object-cover rounded-md"
+                          loading="lazy"
                         />
                         <Button
                           type="button"

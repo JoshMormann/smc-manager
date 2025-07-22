@@ -165,15 +165,22 @@ export class SREFCodeService {
   // Update an existing SREF code
   static async updateSREFCode(codeId: string, updates: SREFCodeUpdate): Promise<{ data: SREFCode | null; error: Error | null }> {
     try {
+      // Build selective update payload for main record
+      const mainRecordUpdate: any = {
+        updated_at: new Date().toISOString()
+      };
+      
+      // Only include fields that were actually provided
+      if (updates.title !== undefined) mainRecordUpdate.title = updates.title;
+      if (updates.code_value !== undefined) mainRecordUpdate.code_value = updates.code_value;
+      if (updates.sv_version !== undefined) mainRecordUpdate.sv_version = updates.sv_version;
+      
+      console.log('🔍 Updating main record with:', mainRecordUpdate);
+      
       // Update the main record
       const { data: updatedCode, error: codeError } = await supabase
         .from('sref_codes')
-        .update({
-          code_value: updates.code_value,
-          sv_version: updates.sv_version,
-          title: updates.title,
-          updated_at: new Date().toISOString()
-        })
+        .update(mainRecordUpdate)
         .eq('id', codeId)
         .select()
         .single();
@@ -183,13 +190,50 @@ export class SREFCodeService {
         return { data: null, error: codeError };
       }
 
+      // TODO: CRITICAL - Replace with UUID-based granular image operations
+      // CURRENT PROBLEM: "Delete all, re-insert all" approach causing duplications
+      // Delete operation returns count: 0 (failing silently) but inserts work
+      // Result: Original images stay + new images inserted = duplicates
+      //
+      // TOMORROW'S IMPLEMENTATION:
+      // 1. Change SREFCodeUpdate interface to include:
+      //    - imagesToDelete: string[] (UUIDs or image_urls to remove)
+      //    - imagesToAdd: string[] (new image URLs to insert)
+      // 2. Delete only specific images by UUID: DELETE WHERE id IN (uuid1, uuid2)
+      // 3. Insert only new images
+      // 4. Investigate why current delete returns count 0 (RLS policies?)
+      
       // Update images if provided
       if (updates.images !== undefined) {
-        // Delete existing images
-        await supabase
+        // First, check how many images exist before deletion
+        const { data: existingImages, error: countError } = await supabase
           .from('code_images')
-          .delete()
+          .select('id, image_url')
           .eq('code_id', codeId);
+          
+        console.log('🔍 DEBUG - Images before deletion:', existingImages?.length || 0);
+        console.log('🔍 DEBUG - Existing image URLs:', existingImages?.map(img => img.image_url));
+
+        // BROKEN: Delete ALL existing images (returns count 0!)
+        const { error: deleteError, count: deletedCount } = await supabase
+          .from('code_images')
+          .delete({ count: 'exact' })
+          .eq('code_id', codeId);
+
+        if (deleteError) {
+          captureException(deleteError, { 
+            tags: { 
+              operation: 'update_sref_code_delete_images',
+              code_id: codeId 
+            } 
+          });
+          console.error('🚨 DELETE FAILED:', deleteError);
+          console.error('🚨 DELETE ERROR CODE:', deleteError.code);
+          console.error('🚨 DELETE ERROR MESSAGE:', deleteError.message);
+        } else {
+          console.log(`✅ Successfully deleted ${deletedCount} existing images for code ${codeId}`);
+          // TODO: Investigate why deletedCount is 0 when existingImages.length > 0
+        }
 
         // Insert new images
         if (updates.images.length > 0) {
@@ -199,23 +243,44 @@ export class SREFCodeService {
             position: index
           }));
 
-          const { error: imagesError } = await supabase
+          const { error: imagesError, count: insertedCount } = await supabase
             .from('code_images')
-            .insert(imageInserts);
+            .insert(imageInserts, { count: 'exact' });
 
           if (imagesError) {
-            captureException(imagesError, { tags: { operation: 'update_sref_code_images' } });
+            captureException(imagesError, { 
+              tags: { 
+                operation: 'update_sref_code_images',
+                code_id: codeId 
+              } 
+            });
+            console.error('Failed to insert new images:', imagesError);
+          } else {
+            console.log(`Successfully inserted ${insertedCount} new images for code ${codeId}`);
           }
         }
       }
 
       // Update tags if provided
       if (updates.tags !== undefined) {
-        // Delete existing tags
-        await supabase
+        // Delete existing tags with proper error handling
+        const { error: deleteTagsError, count: deletedTagsCount } = await supabase
           .from('code_tags')
-          .delete()
+          .delete({ count: 'exact' })
           .eq('code_id', codeId);
+
+        if (deleteTagsError) {
+          captureException(deleteTagsError, { 
+            tags: { 
+              operation: 'update_sref_code_delete_tags',
+              code_id: codeId 
+            } 
+          });
+          console.error('Failed to delete existing tags:', deleteTagsError);
+          // Continue with insert to avoid breaking the update
+        } else {
+          console.log(`Successfully deleted ${deletedTagsCount} existing tags for code ${codeId}`);
+        }
 
         // Insert new tags
         if (updates.tags.length > 0) {
@@ -224,12 +289,20 @@ export class SREFCodeService {
             tag: tag
           }));
 
-          const { error: tagsError } = await supabase
+          const { error: tagsError, count: insertedTagsCount } = await supabase
             .from('code_tags')
-            .insert(tagInserts);
+            .insert(tagInserts, { count: 'exact' });
 
           if (tagsError) {
-            captureException(tagsError, { tags: { operation: 'update_sref_code_tags' } });
+            captureException(tagsError, { 
+              tags: { 
+                operation: 'update_sref_code_tags',
+                code_id: codeId 
+              } 
+            });
+            console.error('Failed to insert new tags:', tagsError);
+          } else {
+            console.log(`Successfully inserted ${insertedTagsCount} new tags for code ${codeId}`);
           }
         }
       }
