@@ -139,11 +139,39 @@ CREATE POLICY "Users can create images for their own codes" ON code_images
     )
   );
 
+CREATE POLICY "Users can delete images for their own codes" ON code_images
+  FOR DELETE USING (
+    auth.uid() IN (
+      SELECT user_id FROM sref_codes WHERE id = code_id
+    )
+  );
+
+CREATE POLICY "Users can update images for their own codes" ON code_images
+  FOR UPDATE USING (
+    auth.uid() IN (
+      SELECT user_id FROM sref_codes WHERE id = code_id
+    )
+  );
+
 CREATE POLICY "Code tags are viewable by everyone" ON code_tags
   FOR SELECT USING (true);
 
 CREATE POLICY "Users can create tags for their own codes" ON code_tags
   FOR INSERT WITH CHECK (
+    auth.uid() IN (
+      SELECT user_id FROM sref_codes WHERE id = code_id
+    )
+  );
+
+CREATE POLICY "Users can delete tags for their own codes" ON code_tags
+  FOR DELETE USING (
+    auth.uid() IN (
+      SELECT user_id FROM sref_codes WHERE id = code_id
+    )
+  );
+
+CREATE POLICY "Users can update tags for their own codes" ON code_tags
+  FOR UPDATE USING (
     auth.uid() IN (
       SELECT user_id FROM sref_codes WHERE id = code_id
     )
