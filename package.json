@@ -80,7 +80,7 @@
     "typescript-eslint": "^8.24.1",
     "vaul": "^1.1.2",
     "vite": "^6.2.0",
-    "zod": "^3.24.2"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "prettier": "3.5.3"

@@ -2,6 +2,9 @@ import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, X, Plus, Save, Image as _ImageIcon, Tag, Code } from 'lucide-react';
 import equal from 'fast-deep-equal';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { srefCodeSchema, type SREFFormData } from '@/schemas/srefValidation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,6 +37,20 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  // React Hook Form with Zod validation
+  const form = useForm<SREFFormData>({
+    resolver: zodResolver(srefCodeSchema),
+    defaultValues: {
+      title: editingCode?.title || '',
+      code_value: editingCode?.code_value || '',
+      version: editingCode?.version || 'SV6',
+      tags: editingCode?.tags || [],
+      images: editingCode?.images || []
+    }
+  });
+  
+  const formData = form.watch();
+  
   // Original state for change detection (only for editing)
   const originalState = useRef(editingCode ? {
     title: editingCode.title,
@@ -42,15 +59,6 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
     tags: [...editingCode.tags],
     images: [...(editingCode.images || [])]
   } : null);
-  
-  // Form state
-  const [formData, setFormData] = useState({
-    title: editingCode?.title || '',
-    code_value: editingCode?.code_value || '',
-    version: editingCode?.version || 'SV6' as const,
-    tags: editingCode?.tags || [],
-    images: editingCode?.images || []
-  });
   
   const [newTag, setNewTag] = useState('');
   const [imageFiles, setImageFiles] = useState<File[]>([]);
@@ -104,25 +112,21 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
     return hasNewFiles || !equal(originalImages, currentImages);
   };
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const handleInputChange = (field: keyof SREFFormData, value: string) => {
+    form.setValue(field, value);
   };
 
   const handleAddTag = () => {
     if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        tags: [...prev.tags, newTag.trim()]
-      }));
+      const newTags = [...formData.tags, newTag.trim()];
+      form.setValue('tags', newTags);
       setNewTag('');
     }
   };
 
   const handleRemoveTag = (tagToRemove: string) => {
-    setFormData(prev => ({
-      ...prev,
-      tags: prev.tags.filter(tag => tag !== tagToRemove)
-    }));
+    const newTags = formData.tags.filter(tag => tag !== tagToRemove);
+    form.setValue('tags', newTags);
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -150,11 +154,9 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
     
     // Determine if this is an existing image or a new file
     if (index < (originalState.current?.images.length || 0)) {
-      // Removing existing image - update formData.images to track what's been removed
-      setFormData(prev => ({
-        ...prev,
-        images: prev.images.filter((_, i) => i !== index)
-      }));
+      // Removing existing image - update form images to track what's been removed
+      const newImages = formData.images.filter((_, i) => i !== index);
+      form.setValue('images', newImages);
       console.log('🗑️ Removed existing image at index:', index);
     } else {
       // Removing new file
@@ -164,17 +166,16 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
     }
   };
 
-  const validateForm = () => {
-    if (!formData.title.trim()) {
-      toast.error('Title is required');
-      return false;
-    }
-    if (!formData.code_value.trim()) {
-      toast.error('SREF code is required');
-      return false;
-    }
-    if (!formData.code_value.includes('--sref')) {
-      toast.error('SREF code must include "--sref"');
+  const validateForm = async () => {
+    const isValid = await form.trigger();
+    if (!isValid) {
+      // Show validation errors from Zod
+      const errors = form.formState.errors;
+      Object.values(errors).forEach(error => {
+        if (error?.message) {
+          toast.error(error.message);
+        }
+      });
       return false;
     }
     return true;
@@ -188,7 +189,7 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
       return;
     }
 
-    if (!validateForm()) return;
+    if (!(await validateForm())) return;
 
     setIsSubmitting(true);
     
@@ -222,7 +223,16 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
       });
       
       // Build selective update payload - only include changed fields
-      const srefData: any = {
+      interface SREFSubmissionData {
+        user_id: string;
+        title?: string;
+        code_value?: string;
+        sv_version?: number;
+        tags?: string[];
+        images?: string[];
+      }
+      
+      const srefData: SREFSubmissionData = {
         user_id: user.id // Always include user_id
       };
       
@@ -272,14 +282,24 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
       console.log('SREF data to submit:', srefData);
 
       if (editingCode) {
-        const result = await updateSREFCode(editingCode.id, srefData);
+        const result = await updateSREFCode(editingCode.id, srefData as any);
         if (!result.success) {
           console.error('Update SREF code error:', result.error);
           throw new Error(result.error);
         }
         toast.success('SREF code updated successfully!');
       } else {
-        const result = await createSREFCode(srefData);
+        // For creation, ensure all required fields are present
+        const createData = {
+          ...srefData,
+          title: formData.title.trim(),
+          code_value: formData.code_value.trim(),
+          sv_version: formData.version === 'SV6' ? 6 : 4,
+          tags: formData.tags,
+          images: [...formData.images, ...uploadedImageUrls]
+        };
+        
+        const result = await createSREFCode(createData);
         if (!result.success) {
           console.error('Create SREF code error:', result.error);
           throw new Error(result.error);
@@ -334,13 +354,17 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
                   value={formData.title}
                   onChange={(e) => handleInputChange('title', e.target.value)}
                   placeholder="e.g., 90's comic book style"
+                  className={form.formState.errors.title ? 'border-red-500' : ''}
                   required
                 />
+                {form.formState.errors.title && (
+                  <p className="text-sm text-red-500">{form.formState.errors.title.message}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="version">Version *</Label>
                 <Select value={formData.version} onValueChange={(value: 'SV4' | 'SV6') => handleInputChange('version', value)}>
-                  <SelectTrigger>
+                  <SelectTrigger className={form.formState.errors.version ? 'border-red-500' : ''}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -348,6 +372,9 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
                     <SelectItem value="SV4">SV4</SelectItem>
                   </SelectContent>
                 </Select>
+                {form.formState.errors.version && (
+                  <p className="text-sm text-red-500">{form.formState.errors.version.message}</p>
+                )}
               </div>
             </div>
 
@@ -359,9 +386,12 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
                 value={formData.code_value}
                 onChange={(e) => handleInputChange('code_value', e.target.value)}
                 placeholder="--sref 1234567890"
-                className="font-mono"
+                className={`font-mono ${form.formState.errors.code_value ? 'border-red-500' : ''}`}
                 required
               />
+              {form.formState.errors.code_value && (
+                <p className="text-sm text-red-500">{form.formState.errors.code_value.message}</p>
+              )}
             </div>
 
 
