@@ -18,7 +18,7 @@ export interface PasswordResetConfirmScreenProps {
   isLoading?: boolean;
   error?: string | null;
   success?: boolean;
-  resetToken?: string;
+  _resetToken?: string;
 }
 
 // Password strength calculation
@@ -56,7 +56,7 @@ export default function PasswordResetConfirmScreen({
   isLoading = false,
   error = null,
   success = false,
-  resetToken = ""
+  _resetToken = ""
 }: PasswordResetConfirmScreenProps) {
   // Form state
   const [newPassword, setNewPassword] = useState("");

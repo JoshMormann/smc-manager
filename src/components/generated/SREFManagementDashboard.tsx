@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, lazy, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Home, Folder, Package, Compass, Search, Tag, Plus, ChevronDown, ChevronRight, Menu, X, LogOut } from "lucide-react";
@@ -20,11 +20,14 @@ import { useSREFCodes } from "@/hooks/useSREFCodes";
 import { useTags } from "@/hooks/useTags";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserProfile } from "@/hooks/useUserProfile";
-import SREFEditModal from "@/components/sref/SREFEditModal";
 import StorageDebugPanel from "@/components/debug/StorageDebugPanel";
+import { SREFCode as DatabaseSREFCode } from "@/lib/database";
 
-// Types
-export interface SREFCode {
+// Lazy load the edit modal since it's only used when editing
+const SREFEditModal = lazy(() => import("@/components/sref/SREFEditModal"));
+
+// Types - Union type to handle both database and UI representations
+export type SREFCode = DatabaseSREFCode | {
   id: string;
   title: string;
   code: string;
@@ -34,7 +37,7 @@ export interface SREFCode {
   images: Array<{id: string; image_url: string; position: number}>;
   tags: string[];
   createdAt: Date;
-}
+};
 export interface FolderItem {
   id: string;
   name: string;
@@ -122,7 +125,7 @@ export default function SREFManagementDashboard({
 }: SREFManagementDashboardProps) {
   // Authentication
   const { user, signOut } = useAuth();
-  const { profile } = useUserProfile(user);
+  const { profile: _profile } = useUserProfile(user);
   
   // Real data hooks
   const { 
@@ -147,7 +150,16 @@ export default function SREFManagementDashboard({
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [folders, setFolders] = useState<FolderItem[]>(initialFolders);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingCode, setEditingCode] = useState<any>(null);
+  type EditingCodeType = {
+    id: string;
+    title: string;
+    code_value: string;
+    version: 'SV4' | 'SV6';
+    tags: string[];
+    images?: string[];
+  };
+  
+  const [editingCode, setEditingCode] = useState<EditingCodeType | null>(null);
   const [showDebugPanel, setShowDebugPanel] = useState(false);
   
   // Use real data when user is authenticated, fallback to mock data
@@ -208,14 +220,13 @@ export default function SREFManagementDashboard({
   const handleCardEdit = (id: string) => {
     const code = srefCodes.find(c => c.id === id);
     if (code) {
-      const codeRecord = code as any;
       setEditingCode({
-        id: codeRecord.id,
-        title: codeRecord.title,
-        code_value: codeRecord.code_value || codeRecord.code,
-        version: codeRecord.version || (codeRecord.sv_version === 6 ? 'SV6' : 'SV4'),
-        tags: codeRecord.tags || [],
-        images: codeRecord.images?.map((img: any) => typeof img === 'string' ? img : img.image_url) || []
+        id: code.id,
+        title: code.title,
+        code_value: (code as any).code_value || (code as any).code,
+        version: (code as any).version || ((code as any).sv_version === 6 ? 'SV6' : 'SV4'),
+        tags: code.tags || [],
+        images: code.images?.map(img => typeof img === 'string' ? img : img.image_url) || []
       });
       setIsEditModalOpen(true);
     }
@@ -541,12 +552,16 @@ export default function SREFManagementDashboard({
 
         <Toaster />
         
-        <SREFEditModal
-          isOpen={isEditModalOpen}
-          onClose={() => setIsEditModalOpen(false)}
-          editingCode={editingCode}
-          onSuccess={handleEditSuccess}
-        />
+        {isEditModalOpen && (
+          <Suspense fallback={null}>
+            <SREFEditModal
+              isOpen={isEditModalOpen}
+              onClose={() => setIsEditModalOpen(false)}
+              editingCode={editingCode || undefined}
+              onSuccess={handleEditSuccess}
+            />
+          </Suspense>
+        )}
       </div>
     </TooltipProvider>;
 }

@@ -36,19 +36,19 @@ export const initSentry = () => {
 };
 
 // Temporarily disable Sentry functions for debugging
-export const captureException = (error: any, context?: any) => {
+export const captureException = (error: Error | unknown, context?: Record<string, unknown>) => {
   console.log('Sentry captureException (disabled):', error, context);
 };
-export const captureMessage = (message: string, level?: any) => {
+export const captureMessage = (message: string, level?: 'info' | 'warning' | 'error' | 'debug') => {
   console.log('Sentry captureMessage (disabled):', message, level);
 };
-export const setUser = (user: any) => {
+export const setUser = (user: { id?: string; email?: string; [key: string]: unknown }) => {
   console.log('Sentry setUser (disabled):', user);
 };
-export const setContext = (key: string, context: any) => {
+export const setContext = (key: string, context: Record<string, unknown>) => {
   console.log('Sentry setContext (disabled):', key, context);
 };
-export const addBreadcrumb = (breadcrumb: any) => {
+export const addBreadcrumb = (breadcrumb: { message?: string; level?: string; category?: string; [key: string]: unknown }) => {
   console.log('Sentry addBreadcrumb (disabled):', breadcrumb);
 };
 

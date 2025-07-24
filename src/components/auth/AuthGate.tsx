@@ -55,7 +55,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
       } else {
         setResetEmailSent(true);
       }
-    } catch (err) {
+    } catch (_err) {
       setResetError('An unexpected error occurred. Please try again.');
     } finally {
       setResetLoading(false);
@@ -85,7 +85,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
         setIsLogin(true);
         setPasswordResetToken(null);
       }
-    } catch (err) {
+    } catch (_err) {
       setResetError('An unexpected error occurred. Please try again.');
     } finally {
       setResetLoading(false);
@@ -117,7 +117,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
               isLoading={resetLoading}
               error={resetError}
               success={false}
-              resetToken={passwordResetToken || undefined}
+              _resetToken={passwordResetToken || undefined}
             />
           ) : showPasswordReset ? (
             <PasswordResetScreen

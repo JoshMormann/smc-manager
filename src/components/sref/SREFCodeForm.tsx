@@ -363,7 +363,7 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
       console.log('SREF data to submit:', srefData);
 
       if (editingCode) {
-        const result = await updateSREFCode(editingCode.id, srefData as any);
+        const result = await updateSREFCode(editingCode.id, srefData);
         if (!result.success) {
           console.error('Update SREF code error:', result.error);
           throw new Error(result.error);

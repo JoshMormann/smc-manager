@@ -174,7 +174,7 @@ export class SREFCodeService {
   static async updateSREFCode(codeId: string, updates: SREFCodeUpdate): Promise<{ data: SREFCode | null; error: Error | null }> {
     try {
       // Build selective update payload for main record
-      const mainRecordUpdate: any = {
+      const mainRecordUpdate: Database['public']['Tables']['sref_codes']['Update'] = {
         updated_at: new Date().toISOString()
       };
       

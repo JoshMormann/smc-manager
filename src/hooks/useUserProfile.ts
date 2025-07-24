@@ -94,7 +94,7 @@ export const useUserProfile = (user: User | null) => {
     };
 
     fetchOrCreateProfile();
-  }, [user?.id]);
+  }, [user]);
 
   const updateProfile = async (updates: Partial<UserProfile>) => {
     if (!user || !profile) return { error: 'No user or profile' };

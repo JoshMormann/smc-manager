@@ -1,10 +1,12 @@
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, lazy, Suspense } from 'react';
 import themeSettings from './settings/theme';
 import { Theme } from './settings/types';
-import SREFManagementDashboard from './components/generated/SREFManagementDashboard.tsx';
 import { AuthProvider } from './contexts/AuthContext';
 import { AuthGate } from './components/auth/AuthGate';
 import { useSystemTheme } from './hooks/useSystemTheme';
+
+// Lazy load the main dashboard for better initial load performance
+const SREFManagementDashboard = lazy(() => import('./components/generated/SREFManagementDashboard.tsx'));
 
 function App() {
   const systemTheme = useSystemTheme();
@@ -24,7 +26,15 @@ function App() {
 
   const generatedComponent = useMemo(() => {
     // THIS IS WHERE THE TOP LEVEL GENRATED COMPONENT WILL BE RETURNED!
-    return <SREFManagementDashboard /> // %EXPORT_STATEMENT%
+    return (
+      <Suspense fallback={
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      }>
+        <SREFManagementDashboard /> {/* %EXPORT_STATEMENT% */}
+      </Suspense>
+    );
   }, []);
 
   const appContent = themeSettings.container === 'centered' ? (
