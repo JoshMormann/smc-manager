@@ -16,6 +16,14 @@ export type SREFCodeInsert = Database['public']['Tables']['sref_codes']['Insert'
 export type SREFCodeUpdate = Database['public']['Tables']['sref_codes']['Update'] & {
   images?: string[];
   tags?: string[];
+  imageDiff?: {
+    imagesToDelete: string[];
+    imagesToAdd: string[];
+  };
+  tagDiff?: {
+    tagsToDelete: string[];
+    tagsToAdd: string[];
+  };
 };
 
 export type Folder = Database['public']['Tables']['folders']['Row'];
@@ -203,44 +211,50 @@ export class SREFCodeService {
       // 3. Insert only new images
       // 4. Investigate why current delete returns count 0 (RLS policies?)
       
-      // Update images if provided
-      if (updates.images !== undefined) {
-        // First, check how many images exist before deletion
-        const { data: existingImages, error: countError } = await supabase
-          .from('code_images')
-          .select('id, image_url')
-          .eq('code_id', codeId);
-          
-        console.log('🔍 DEBUG - Images before deletion:', existingImages?.length || 0);
-        console.log('🔍 DEBUG - Existing image URLs:', existingImages?.map(img => img.image_url));
+      // Handle images with granular diffing or full replacement
+      if (updates.imageDiff) {
+        // NEW: Granular image update approach
+        const { imagesToDelete, imagesToAdd } = updates.imageDiff;
+        
+        console.log('🔍 Granular image update:', { imagesToDelete, imagesToAdd });
+        
+        // Delete specific images by URL
+        if (imagesToDelete.length > 0) {
+          const { error: deleteError, count: deletedCount } = await supabase
+            .from('code_images')
+            .delete({ count: 'exact' })
+            .eq('code_id', codeId)
+            .in('image_url', imagesToDelete);
 
-        // BROKEN: Delete ALL existing images (returns count 0!)
-        const { error: deleteError, count: deletedCount } = await supabase
-          .from('code_images')
-          .delete({ count: 'exact' })
-          .eq('code_id', codeId);
-
-        if (deleteError) {
-          captureException(deleteError, { 
-            tags: { 
-              operation: 'update_sref_code_delete_images',
-              code_id: codeId 
-            } 
-          });
-          console.error('🚨 DELETE FAILED:', deleteError);
-          console.error('🚨 DELETE ERROR CODE:', deleteError.code);
-          console.error('🚨 DELETE ERROR MESSAGE:', deleteError.message);
-        } else {
-          console.log(`✅ Successfully deleted ${deletedCount} existing images for code ${codeId}`);
-          // TODO: Investigate why deletedCount is 0 when existingImages.length > 0
+          if (deleteError) {
+            captureException(deleteError, { 
+              tags: { 
+                operation: 'granular_delete_images',
+                code_id: codeId 
+              } 
+            });
+            console.error('🚨 Granular DELETE FAILED:', deleteError);
+          } else {
+            console.log(`✅ Granular delete: removed ${deletedCount} specific images`);
+          }
         }
-
-        // Insert new images
-        if (updates.images.length > 0) {
-          const imageInserts = updates.images.map((imageUrl, index) => ({
+        
+        // Insert only new images
+        if (imagesToAdd.length > 0) {
+          // Get current max position to maintain order
+          const { data: maxPositionData } = await supabase
+            .from('code_images')
+            .select('position')
+            .eq('code_id', codeId)
+            .order('position', { ascending: false })
+            .limit(1);
+            
+          const startPosition = (maxPositionData?.[0]?.position ?? -1) + 1;
+          
+          const imageInserts = imagesToAdd.map((imageUrl, index) => ({
             code_id: codeId,
             image_url: imageUrl,
-            position: index
+            position: startPosition + index
           }));
 
           const { error: imagesError, count: insertedCount } = await supabase
@@ -250,59 +264,145 @@ export class SREFCodeService {
           if (imagesError) {
             captureException(imagesError, { 
               tags: { 
-                operation: 'update_sref_code_images',
+                operation: 'granular_insert_images',
                 code_id: codeId 
               } 
             });
-            console.error('Failed to insert new images:', imagesError);
+            console.error('Granular INSERT FAILED:', imagesError);
           } else {
-            console.log(`Successfully inserted ${insertedCount} new images for code ${codeId}`);
+            console.log(`✅ Granular insert: added ${insertedCount} new images`);
+          }
+        }
+      } else if (updates.images !== undefined) {
+        // FALLBACK: Full replacement for new creations or legacy calls
+        console.log('🔄 Full image replacement (legacy mode)');
+        
+        // Delete ALL existing images
+        const { error: deleteError } = await supabase
+          .from('code_images')
+          .delete()
+          .eq('code_id', codeId);
+
+        if (deleteError) {
+          captureException(deleteError, { 
+            tags: { 
+              operation: 'legacy_delete_all_images',
+              code_id: codeId 
+            } 
+          });
+        }
+
+        // Insert all new images
+        if (updates.images.length > 0) {
+          const imageInserts = updates.images.map((imageUrl, index) => ({
+            code_id: codeId,
+            image_url: imageUrl,
+            position: index
+          }));
+
+          const { error: imagesError } = await supabase
+            .from('code_images')
+            .insert(imageInserts);
+
+          if (imagesError) {
+            captureException(imagesError, { 
+              tags: { 
+                operation: 'legacy_insert_images',
+                code_id: codeId 
+              } 
+            });
           }
         }
       }
 
-      // Update tags if provided
-      if (updates.tags !== undefined) {
-        // Delete existing tags with proper error handling
-        const { error: deleteTagsError, count: deletedTagsCount } = await supabase
-          .from('code_tags')
-          .delete({ count: 'exact' })
-          .eq('code_id', codeId);
+      // Handle tags with granular diffing or full replacement
+      if (updates.tagDiff) {
+        // NEW: Granular tag update approach
+        const { tagsToDelete, tagsToAdd } = updates.tagDiff;
+        
+        console.log('🔍 Granular tag update:', { tagsToDelete, tagsToAdd });
+        
+        // Delete specific tags by tag name
+        if (tagsToDelete.length > 0) {
+          const { error: deleteError, count: deletedCount } = await supabase
+            .from('code_tags')
+            .delete({ count: 'exact' })
+            .eq('code_id', codeId)
+            .in('tag', tagsToDelete);
 
-        if (deleteTagsError) {
-          captureException(deleteTagsError, { 
-            tags: { 
-              operation: 'update_sref_code_delete_tags',
-              code_id: codeId 
-            } 
-          });
-          console.error('Failed to delete existing tags:', deleteTagsError);
-          // Continue with insert to avoid breaking the update
-        } else {
-          console.log(`Successfully deleted ${deletedTagsCount} existing tags for code ${codeId}`);
+          if (deleteError) {
+            captureException(deleteError, { 
+              tags: { 
+                operation: 'granular_delete_tags',
+                code_id: codeId 
+              } 
+            });
+            console.error('🚨 Granular tag DELETE FAILED:', deleteError);
+          } else {
+            console.log(`✅ Granular delete: removed ${deletedCount} specific tags`);
+          }
         }
-
-        // Insert new tags
-        if (updates.tags.length > 0) {
-          const tagInserts = updates.tags.map(tag => ({
+        
+        // Insert only new tags
+        if (tagsToAdd.length > 0) {
+          const tagInserts = tagsToAdd.map(tag => ({
             code_id: codeId,
             tag: tag
           }));
 
-          const { error: tagsError, count: insertedTagsCount } = await supabase
+          const { error: tagsError, count: insertedCount } = await supabase
             .from('code_tags')
             .insert(tagInserts, { count: 'exact' });
 
           if (tagsError) {
             captureException(tagsError, { 
               tags: { 
-                operation: 'update_sref_code_tags',
+                operation: 'granular_insert_tags',
                 code_id: codeId 
               } 
             });
-            console.error('Failed to insert new tags:', tagsError);
+            console.error('Granular tag INSERT FAILED:', tagsError);
           } else {
-            console.log(`Successfully inserted ${insertedTagsCount} new tags for code ${codeId}`);
+            console.log(`✅ Granular insert: added ${insertedCount} new tags`);
+          }
+        }
+      } else if (updates.tags !== undefined) {
+        // FALLBACK: Full replacement for new creations or legacy calls
+        console.log('🔄 Full tag replacement (legacy mode)');
+        
+        // Delete ALL existing tags
+        const { error: deleteTagsError } = await supabase
+          .from('code_tags')
+          .delete()
+          .eq('code_id', codeId);
+
+        if (deleteTagsError) {
+          captureException(deleteTagsError, { 
+            tags: { 
+              operation: 'legacy_delete_all_tags',
+              code_id: codeId 
+            } 
+          });
+        }
+
+        // Insert all new tags
+        if (updates.tags.length > 0) {
+          const tagInserts = updates.tags.map(tag => ({
+            code_id: codeId,
+            tag: tag
+          }));
+
+          const { error: tagsError } = await supabase
+            .from('code_tags')
+            .insert(tagInserts);
+
+          if (tagsError) {
+            captureException(tagsError, { 
+              tags: { 
+                operation: 'legacy_insert_tags',
+                code_id: codeId 
+              } 
+            });
           }
         }
       }

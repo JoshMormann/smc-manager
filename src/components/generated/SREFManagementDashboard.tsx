@@ -136,7 +136,8 @@ export default function SREFManagementDashboard({
   
   const { 
     tags: realTags, 
-    loading: _tagsLoading 
+    loading: _tagsLoading,
+    refreshTags 
   } = useTags();
 
   // State
@@ -230,8 +231,9 @@ export default function SREFManagementDashboard({
   const handleEditSuccess = () => {
     setIsEditModalOpen(false);
     setEditingCode(null);
-    // Refresh the SREF codes list to show the new/updated code
+    // Refresh both SREF codes and tags to update the tag cloud
     refreshSREFCodes();
+    refreshTags();
   };
 
   // Handle card delete

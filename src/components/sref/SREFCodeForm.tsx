@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { useSREFCodes } from '@/hooks/useSREFCodes';
 import { useAuth } from '@/contexts/AuthContext';
 import { useImageUpload } from '@/hooks/useImageUpload';
+import { useTags } from '@/hooks/useTags';
 
 interface SREFCodeFormProps {
   editingCode?: {
@@ -34,6 +35,7 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
   const { user } = useAuth();
   const { createSREFCode, updateSREFCode } = useSREFCodes();
   const { uploadImages, uploading: imageUploading, progress: uploadProgress } = useImageUpload();
+  const { tags: availableTags } = useTags();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -61,6 +63,7 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
   } : null);
   
   const [newTag, setNewTag] = useState('');
+  const [showTagSuggestions, setShowTagSuggestions] = useState(false);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>(editingCode?.images || []);
 
@@ -116,12 +119,45 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
     form.setValue(field, value);
   };
 
-  const handleAddTag = () => {
-    if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
-      const newTags = [...formData.tags, newTag.trim()];
+  // Filter available tags based on input and exclude already selected tags
+  const filteredSuggestions = availableTags
+    .filter(tag => 
+      tag.toLowerCase().includes(newTag.toLowerCase()) && 
+      !formData.tags.includes(tag)
+    )
+    .slice(0, 5); // Limit to 5 suggestions
+
+  const handleAddTag = (tagToAdd?: string) => {
+    const tag = tagToAdd || newTag;
+    if (tag.trim() && !formData.tags.includes(tag.trim())) {
+      const newTags = [...formData.tags, tag.trim()];
       form.setValue('tags', newTags);
       setNewTag('');
+      setShowTagSuggestions(false);
     }
+  };
+
+  const handleTagInputChange = (value: string) => {
+    setNewTag(value);
+    // Update suggestions based on the new value
+    const newFilteredSuggestions = availableTags
+      .filter(tag => 
+        tag.toLowerCase().includes(value.toLowerCase()) && 
+        !formData.tags.includes(tag)
+      )
+      .slice(0, 5);
+    setShowTagSuggestions(value.length > 0 && newFilteredSuggestions.length > 0);
+  };
+
+  const handleTagInputFocus = () => {
+    if (newTag.length > 0 && filteredSuggestions.length > 0) {
+      setShowTagSuggestions(true);
+    }
+  };
+
+  const handleTagInputBlur = () => {
+    // Delay hiding to allow clicking on suggestions
+    setTimeout(() => setShowTagSuggestions(false), 200);
   };
 
   const handleRemoveTag = (tagToRemove: string) => {
@@ -230,6 +266,14 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
         sv_version?: number;
         tags?: string[];
         images?: string[];
+        imageDiff?: {
+          imagesToDelete: string[];
+          imagesToAdd: string[];
+        };
+        tagDiff?: {
+          tagsToDelete: string[];
+          tagsToAdd: string[];
+        };
       }
       
       const srefData: SREFSubmissionData = {
@@ -246,37 +290,74 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
       
       // Only include tags if they changed
       if (tagsChanged) {
-        // TODO: Implement tag diffing for granular updates
-        // Current approach: Replace all tags (inefficient)
-        // Tomorrow: Compare original vs current tags, only add/remove changed ones
-        // Example: original: ['tag1', 'tag2', 'tag3'], current: ['tag1', 'tag3', 'tag4']
-        // Should: DELETE 'tag2', INSERT 'tag4', leave 'tag1' and 'tag3' untouched
-        srefData.tags = formData.tags;
-        console.log('🏷️ Including tags in update:', formData.tags);
+        if (!originalState.current) {
+          // New creation - include all tags
+          srefData.tags = formData.tags;
+          console.log('🏷️ New creation - including all tags:', formData.tags);
+        } else {
+          // Editing - implement granular tag diffing
+          const originalTags = originalState.current.tags;
+          const currentTags = formData.tags;
+          
+          // Find tags to delete (in original but not in current)
+          const tagsToDelete = originalTags.filter(tag => !currentTags.includes(tag));
+          
+          // Find tags to add (in current but not in original)
+          const tagsToAdd = currentTags.filter(tag => !originalTags.includes(tag));
+          
+          console.log('🔍 Tag diffing analysis:', {
+            originalTags,
+            currentTags,
+            tagsToDelete,
+            tagsToAdd
+          });
+          
+          // Send granular tag updates instead of full replacement
+          if (tagsToDelete.length > 0 || tagsToAdd.length > 0) {
+            srefData.tagDiff = {
+              tagsToDelete,
+              tagsToAdd
+            };
+            console.log('🏷️ Sending granular tag update:', srefData.tagDiff);
+          }
+        }
       }
       
       // Only include images if they changed
       if (imagesChanged) {
-        // TODO: CRITICAL - Implement UUID-based image diffing for granular updates
-        // CURRENT PROBLEM: Still using "delete all, re-insert all" approach in backend
-        // This causes duplication when delete fails (returns count 0)
-        // 
-        // TOMORROW'S FIX:
-        // 1. Compare originalState.current.images vs formData.images by UUID/URL
-        // 2. Identify specifically removed images: send { imagesToDelete: [uuid1, uuid2] }
-        // 3. Identify specifically added images: send { imagesToAdd: [newUrl1, newUrl2] }
-        // 4. Backend should delete only specific UUIDs, insert only new images
-        // 5. Leave unchanged images completely untouched
-        //
-        // Example: original: [img1, img2, img3], current: [img1, img3, img4]
-        // Should: DELETE img2, INSERT img4, leave img1 and img3 untouched
-        // Result: 3 images total (not 5!)
-        
-        const allImageUrls = [...formData.images, ...uploadedImageUrls];
-        srefData.images = allImageUrls;
-        console.log('📸 Including images in update:', allImageUrls);
-        console.log('📸 Current formData.images:', formData.images);
-        console.log('📸 New uploaded images:', uploadedImageUrls);
+        if (!originalState.current) {
+          // New creation - include all images
+          const allImageUrls = [...formData.images, ...uploadedImageUrls];
+          srefData.images = allImageUrls;
+          console.log('📸 New creation - including all images:', allImageUrls);
+        } else {
+          // Editing - implement granular image diffing
+          const originalImages = originalState.current.images;
+          const currentImages = [...formData.images, ...uploadedImageUrls];
+          
+          // Find images to delete (in original but not in current)
+          const imagesToDelete = originalImages.filter(url => !currentImages.includes(url));
+          
+          // Find images to add (in current but not in original)
+          const imagesToAdd = currentImages.filter(url => !originalImages.includes(url));
+          
+          console.log('🔍 Image diffing analysis:', {
+            originalImages,
+            currentImages,
+            imagesToDelete,
+            imagesToAdd,
+            uploadedImageUrls
+          });
+          
+          // Send granular image updates instead of full replacement
+          if (imagesToDelete.length > 0 || imagesToAdd.length > 0) {
+            srefData.imageDiff = {
+              imagesToDelete,
+              imagesToAdd
+            };
+            console.log('📸 Sending granular image update:', srefData.imageDiff);
+          }
+        }
       }
       
       console.log('SREF data to submit:', srefData);
@@ -398,21 +479,45 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
             {/* Tags */}
             <div className="space-y-2">
               <Label>Tags</Label>
-              <div className="flex gap-2">
-                <Input
-                  value={newTag}
-                  onChange={(e) => setNewTag(e.target.value)}
-                  placeholder="Add a tag..."
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleAddTag();
-                    }
-                  }}
-                />
-                <Button type="button" onClick={handleAddTag} size="icon" variant="outline">
-                  <Plus className="h-4 w-4" />
-                </Button>
+              <div className="relative">
+                <div className="flex gap-2">
+                  <Input
+                    value={newTag}
+                    onChange={(e) => handleTagInputChange(e.target.value)}
+                    onFocus={handleTagInputFocus}
+                    onBlur={handleTagInputBlur}
+                    placeholder="Add a tag..."
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddTag();
+                      }
+                      if (e.key === 'Escape') {
+                        setShowTagSuggestions(false);
+                      }
+                    }}
+                  />
+                  <Button type="button" onClick={() => handleAddTag()} size="icon" variant="outline">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                
+                {/* Tag Suggestions Dropdown */}
+                {showTagSuggestions && filteredSuggestions.length > 0 && (
+                  <div className="absolute top-full left-0 right-12 mt-1 bg-card border border-border rounded-md shadow-lg z-50 max-h-40 overflow-y-auto">
+                    {filteredSuggestions.map((tag, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        className="w-full text-left px-3 py-2 hover:bg-muted text-sm transition-colors first:rounded-t-md last:rounded-b-md"
+                        onClick={() => handleAddTag(tag)}
+                      >
+                        <Tag className="h-3 w-3 inline mr-2" />
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               {formData.tags.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-2">
