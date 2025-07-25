@@ -28,20 +28,26 @@ export default defineConfig({
         manualChunks: {
           // Core React libraries
           'react-vendor': ['react', 'react-dom'],
-          
+
           // UI and animation libraries
-          'ui-vendor': ['framer-motion', 'lucide-react', '@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-select'],
-          
+          'ui-vendor': [
+            'framer-motion',
+            'lucide-react',
+            '@radix-ui/react-dialog',
+            '@radix-ui/react-dropdown-menu',
+            '@radix-ui/react-select',
+          ],
+
           // Supabase and auth
           'supabase-vendor': ['@supabase/supabase-js', '@supabase/auth-js'],
-          
+
           // Form and validation
           'form-vendor': ['react-hook-form', '@hookform/resolvers', 'zod'],
-          
+
           // Other utilities
-          'utils-vendor': ['fast-deep-equal', 'sonner']
-        }
-      }
-    }
+          'utils-vendor': ['fast-deep-equal', 'sonner'],
+        },
+      },
+    },
   },
 });

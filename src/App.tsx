@@ -6,11 +6,13 @@ import { AuthGate } from './components/auth/AuthGate';
 import { useSystemTheme } from './hooks/useSystemTheme';
 
 // Lazy load the main dashboard for better initial load performance
-const SREFManagementDashboard = lazy(() => import('./components/generated/SREFManagementDashboard.tsx'));
+const SREFManagementDashboard = lazy(
+  () => import('./components/generated/SREFManagementDashboard.tsx')
+);
 
 function App() {
   const systemTheme = useSystemTheme();
-  
+
   function setTheme(theme: Theme) {
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
@@ -27,29 +29,30 @@ function App() {
   const generatedComponent = useMemo(() => {
     // THIS IS WHERE THE TOP LEVEL GENRATED COMPONENT WILL BE RETURNED!
     return (
-      <Suspense fallback={
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-      }>
+      <Suspense
+        fallback={
+          <div className="flex items-center justify-center min-h-screen">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        }
+      >
         <SREFManagementDashboard /> {/* %EXPORT_STATEMENT% */}
       </Suspense>
     );
   }, []);
 
-  const appContent = themeSettings.container === 'centered' ? (
-    <div className="h-full w-full flex flex-col items-center justify-center">
-      {generatedComponent}
-    </div>
-  ) : (
-    generatedComponent
-  );
+  const appContent =
+    themeSettings.container === 'centered' ? (
+      <div className="h-full w-full flex flex-col items-center justify-center">
+        {generatedComponent}
+      </div>
+    ) : (
+      generatedComponent
+    );
 
   return (
     <AuthProvider>
-      <AuthGate>
-        {appContent}
-      </AuthGate>
+      <AuthGate>{appContent}</AuthGate>
     </AuthProvider>
   );
 }

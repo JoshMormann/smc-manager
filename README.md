@@ -22,23 +22,26 @@ A modern web application for managing SREF (Style Reference) codes used in AI im
 
 ### Prerequisites
 
-- Node.js 18+ 
+- Node.js 18+
 - npm (comes with Node.js)
 
 ### Getting Started
 
 1. Clone the repository
 2. Install dependencies:
+
    ```bash
    npm install
    ```
 
 3. Copy environment configuration:
+
    ```bash
    cp .env.example .env.local
    ```
 
 4. Start the development server:
+
    ```bash
    npm run dev
    ```

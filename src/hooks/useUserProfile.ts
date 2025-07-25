@@ -45,17 +45,18 @@ export const useUserProfile = (user: User | null) => {
         // No profile exists, create one
         console.log('🔄 UserProfile: Creating new profile');
         const isOAuthUser = user.app_metadata?.provider !== 'email';
-        
+
         const profileData = {
           id: user.id,
           email: user.email,
-          username: user.user_metadata?.username || 
-                   user.user_metadata?.full_name || 
-                   user.user_metadata?.name || 
-                   user.email?.split('@')[0] || 
-                   'User',
+          username:
+            user.user_metadata?.username ||
+            user.user_metadata?.full_name ||
+            user.user_metadata?.name ||
+            user.email?.split('@')[0] ||
+            'User',
           tier: isOAuthUser ? 'miner' : 'admin',
-          waitlist_status: isOAuthUser ? 'none' : 'approved'
+          waitlist_status: isOAuthUser ? 'none' : 'approved',
         };
 
         const { data: newProfile, error: createError } = await supabase
@@ -76,7 +77,7 @@ export const useUserProfile = (user: User | null) => {
             setProfile(raceProfile);
             return;
           }
-          
+
           console.error('🔄 UserProfile: Error creating profile:', createError);
           setError(createError.message);
           return;
@@ -84,7 +85,6 @@ export const useUserProfile = (user: User | null) => {
 
         console.log('🔄 UserProfile: Created new profile:', newProfile);
         setProfile(newProfile);
-
       } catch (err) {
         console.error('🔄 UserProfile: Unexpected error:', err);
         setError(err instanceof Error ? err.message : 'Unknown error');
@@ -100,17 +100,14 @@ export const useUserProfile = (user: User | null) => {
     if (!user || !profile) return { error: 'No user or profile' };
 
     try {
-      const { error } = await supabase
-        .from('users')
-        .update(updates)
-        .eq('id', user.id);
+      const { error } = await supabase.from('users').update(updates).eq('id', user.id);
 
       if (error) {
         return { error: error.message };
       }
 
       // Update local state
-      setProfile(prev => prev ? { ...prev, ...updates } : null);
+      setProfile(prev => (prev ? { ...prev, ...updates } : null));
       return { error: null };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';

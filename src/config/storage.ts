@@ -4,28 +4,23 @@
 export const STORAGE_CONFIG = {
   // Your actual bucket name from Supabase project
   bucketName: 'code-images',
-  
+
   // File upload limits
   maxFileSize: 5 * 1024 * 1024, // 5MB
   maxFiles: 6, // Maximum files per SREF code
-  
+
   // Allowed image types
-  allowedTypes: [
-    'image/jpeg',
-    'image/png', 
-    'image/webp',
-    'image/gif'
-  ],
-  
+  allowedTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+
   // Image compression settings
   compression: {
     quality: 0.8,
     maxWidth: 1920,
-    maxHeight: 1080
+    maxHeight: 1080,
   },
-  
+
   // Cache settings
-  cacheControl: '3600' // 1 hour
+  cacheControl: '3600', // 1 hour
 };
 
 // Quick setup instructions:

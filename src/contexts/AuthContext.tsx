@@ -8,7 +8,11 @@ interface AuthContextType {
   loading: boolean;
   isPasswordRecovery: boolean;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
-  signUp: (email: string, password: string, username: string) => Promise<{ error: AuthError | null }>;
+  signUp: (
+    email: string,
+    password: string,
+    username: string
+  ) => Promise<{ error: AuthError | null }>;
   signInWithGoogle: () => Promise<{ error: AuthError | null }>;
   signInWithDiscord: () => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<{ error: AuthError | null }>;
@@ -61,25 +65,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('🔄 Auth state change:', event, session?.user?.email, 'Recovery:', isPasswordRecovery);
-      
+      console.log(
+        '🔄 Auth state change:',
+        event,
+        session?.user?.email,
+        'Recovery:',
+        isPasswordRecovery
+      );
+
       if (event === 'PASSWORD_RECOVERY') {
         console.log('🔐 Password recovery detected');
         setIsPasswordRecovery(true);
         // Don't set session during password recovery
         return;
       }
-      
+
       if (event === 'SIGNED_IN' && isPasswordRecovery) {
         console.log('🔐 Signed in during recovery - ignoring');
         // Ignore SIGNED_IN during recovery flow
         return;
       }
-      
+
       if (event === 'SIGNED_OUT') {
         setIsPasswordRecovery(false);
       }
-      
+
       setSession(session);
       setLoading(false);
     });
@@ -151,12 +161,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const { error } = await supabase.auth.updateUser({
       password: password,
     });
-    
+
     // Reset recovery state on successful password update
     if (!error) {
       setIsPasswordRecovery(false);
     }
-    
+
     return { error };
   };
 

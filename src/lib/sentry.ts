@@ -3,7 +3,7 @@ import * as Sentry from '@sentry/react';
 export const initSentry = () => {
   const dsn = import.meta.env.VITE_SENTRY_DSN;
   const environment = import.meta.env.VITE_SENTRY_ENVIRONMENT || 'development';
-  
+
   if (!dsn) {
     console.warn('Sentry DSN not found. Error tracking will be disabled.');
     return;
@@ -48,7 +48,12 @@ export const setUser = (user: { id?: string; email?: string; [key: string]: unkn
 export const setContext = (key: string, context: Record<string, unknown>) => {
   console.log('Sentry setContext (disabled):', key, context);
 };
-export const addBreadcrumb = (breadcrumb: { message?: string; level?: string; category?: string; [key: string]: unknown }) => {
+export const addBreadcrumb = (breadcrumb: {
+  message?: string;
+  level?: string;
+  category?: string;
+  [key: string]: unknown;
+}) => {
   console.log('Sentry addBreadcrumb (disabled):', breadcrumb);
 };
 

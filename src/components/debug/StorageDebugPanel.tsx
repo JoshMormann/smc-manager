@@ -11,19 +11,29 @@ import { STORAGE_CONFIG } from '@/config/storage';
 export default function StorageDebugPanel() {
   const { user } = useAuth();
   const [testing, setTesting] = useState(false);
-  const [results, setResults] = useState<Awaited<ReturnType<typeof StorageDiagnostics.getStorageStatus>> | null>(null);
+  const [results, setResults] = useState<Awaited<
+    ReturnType<typeof StorageDiagnostics.getStorageStatus>
+  > | null>(null);
 
   const runDiagnostics = async () => {
     setTesting(true);
     setResults(null);
-    
+
     try {
       const status = await StorageDiagnostics.getStorageStatus(user?.id);
       setResults(status);
     } catch (error: unknown) {
       setResults({
-        bucket: { exists: false, isPublic: false, error: error instanceof Error ? error.message : 'Unknown error', bucketName: STORAGE_CONFIG.bucketName },
-        recommendations: ['Failed to run diagnostics: ' + (error instanceof Error ? error.message : 'Unknown error')]
+        bucket: {
+          exists: false,
+          isPublic: false,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          bucketName: STORAGE_CONFIG.bucketName,
+        },
+        recommendations: [
+          'Failed to run diagnostics: ' +
+            (error instanceof Error ? error.message : 'Unknown error'),
+        ],
       });
     } finally {
       setTesting(false);
@@ -53,17 +63,15 @@ export default function StorageDebugPanel() {
             <div>Bucket Name:</div>
             <Badge variant="outline">{STORAGE_CONFIG.bucketName}</Badge>
             <div>Max File Size:</div>
-            <Badge variant="outline">{Math.round(STORAGE_CONFIG.maxFileSize / (1024 * 1024))}MB</Badge>
+            <Badge variant="outline">
+              {Math.round(STORAGE_CONFIG.maxFileSize / (1024 * 1024))}MB
+            </Badge>
             <div>Max Files:</div>
             <Badge variant="outline">{STORAGE_CONFIG.maxFiles}</Badge>
           </div>
         </div>
 
-        <Button 
-          onClick={runDiagnostics} 
-          disabled={testing}
-          className="w-full"
-        >
+        <Button onClick={runDiagnostics} disabled={testing} className="w-full">
           {testing ? 'Running Diagnostics...' : 'Test Storage Setup'}
         </Button>
 
@@ -131,8 +139,8 @@ export default function StorageDebugPanel() {
 
         <Alert>
           <AlertDescription>
-            This debug panel helps identify storage configuration issues. 
-            Run this test after setting up your Supabase storage bucket.
+            This debug panel helps identify storage configuration issues. Run this test after
+            setting up your Supabase storage bucket.
           </AlertDescription>
         </Alert>
       </CardContent>

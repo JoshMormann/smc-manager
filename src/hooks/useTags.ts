@@ -28,21 +28,21 @@ export const useTags = (): UseTagsReturn => {
 
     try {
       const { data, error } = await SREFCodeService.getUserTags(user.id);
-      
+
       if (error) {
         setError('Failed to load tags');
-        captureException(error, { 
+        captureException(error, {
           tags: { operation: 'fetch_tags' },
-          user: { id: user.id }
+          user: { id: user.id },
         });
       } else {
         setTags(data || []);
       }
     } catch (err) {
       setError('An unexpected error occurred');
-      captureException(err, { 
+      captureException(err, {
         tags: { operation: 'fetch_tags' },
-        user: { id: user.id }
+        user: { id: user.id },
       });
     } finally {
       setLoading(false);
@@ -63,6 +63,6 @@ export const useTags = (): UseTagsReturn => {
     tags,
     loading,
     error,
-    refreshTags
+    refreshTags,
   };
 };

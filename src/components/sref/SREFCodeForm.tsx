@@ -10,7 +10,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toast } from 'sonner';
 import { useSREFCodes } from '@/hooks/useSREFCodes';
 import { useAuth } from '@/contexts/AuthContext';
@@ -38,7 +44,7 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
   const { tags: availableTags } = useTags();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // React Hook Form with Zod validation
   const form = useForm<SREFFormData>({
     resolver: zodResolver(srefCodeSchema),
@@ -47,21 +53,25 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
       code_value: editingCode?.code_value || '',
       version: editingCode?.version || 'SV6',
       tags: editingCode?.tags || [],
-      images: editingCode?.images || []
-    }
+      images: editingCode?.images || [],
+    },
   });
-  
+
   const formData = form.watch();
-  
+
   // Original state for change detection (only for editing)
-  const originalState = useRef(editingCode ? {
-    title: editingCode.title,
-    code_value: editingCode.code_value,
-    version: editingCode.version,
-    tags: [...editingCode.tags],
-    images: [...(editingCode.images || [])]
-  } : null);
-  
+  const originalState = useRef(
+    editingCode
+      ? {
+          title: editingCode.title,
+          code_value: editingCode.code_value,
+          version: editingCode.version,
+          tags: [...editingCode.tags],
+          images: [...(editingCode.images || [])],
+        }
+      : null
+  );
+
   const [newTag, setNewTag] = useState('');
   const [showTagSuggestions, setShowTagSuggestions] = useState(false);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
@@ -70,47 +80,47 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
   // Change detection functions using fast-deep-equal (10-100x faster than manual comparison)
   const hasTextFieldsChanged = () => {
     if (!originalState.current) return true; // New creation - always include
-    
+
     const originalText = {
       title: originalState.current.title,
       code_value: originalState.current.code_value,
-      version: originalState.current.version
+      version: originalState.current.version,
     };
-    
+
     const currentText = {
       title: formData.title,
       code_value: formData.code_value,
-      version: formData.version
+      version: formData.version,
     };
-    
+
     return !equal(originalText, currentText);
   };
 
   const hasTagsChanged = () => {
     if (!originalState.current) return true; // New creation - always include
-    
+
     // Sort both arrays for consistent comparison
     const originalTags = [...originalState.current.tags].sort();
     const currentTags = [...formData.tags].sort();
-    
+
     return !equal(originalTags, currentTags);
   };
 
   const hasImagesChanged = () => {
     if (!originalState.current) return true; // New creation - always include
-    
+
     const originalImages = originalState.current.images;
     const currentImages = formData.images;
     const hasNewFiles = imageFiles.length > 0;
-    
+
     console.log('🔍 Image change analysis:', {
       hasNewFiles,
       originalCount: originalImages.length,
       currentCount: currentImages.length,
       newFilesCount: imageFiles.length,
-      imagesEqual: equal(originalImages, currentImages)
+      imagesEqual: equal(originalImages, currentImages),
     });
-    
+
     // Changed if we have new files OR if existing image arrays are different
     return hasNewFiles || !equal(originalImages, currentImages);
   };
@@ -121,10 +131,7 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
 
   // Filter available tags based on input and exclude already selected tags
   const filteredSuggestions = availableTags
-    .filter(tag => 
-      tag.toLowerCase().includes(newTag.toLowerCase()) && 
-      !formData.tags.includes(tag)
-    )
+    .filter(tag => tag.toLowerCase().includes(newTag.toLowerCase()) && !formData.tags.includes(tag))
     .slice(0, 5); // Limit to 5 suggestions
 
   const handleAddTag = (tagToAdd?: string) => {
@@ -141,9 +148,8 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
     setNewTag(value);
     // Update suggestions based on the new value
     const newFilteredSuggestions = availableTags
-      .filter(tag => 
-        tag.toLowerCase().includes(value.toLowerCase()) && 
-        !formData.tags.includes(tag)
+      .filter(
+        tag => tag.toLowerCase().includes(value.toLowerCase()) && !formData.tags.includes(tag)
       )
       .slice(0, 5);
     setShowTagSuggestions(value.length > 0 && newFilteredSuggestions.length > 0);
@@ -173,11 +179,11 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
     }
 
     setImageFiles(prev => [...prev, ...files]);
-    
+
     // Create previews for new files
     files.forEach(file => {
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = e => {
         setImagePreviews(prev => [...prev, e.target?.result as string]);
       };
       reader.readAsDataURL(file);
@@ -187,7 +193,7 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
   const handleRemoveImage = (index: number) => {
     // Remove from previews
     setImagePreviews(prev => prev.filter((_, i) => i !== index));
-    
+
     // Determine if this is an existing image or a new file
     if (index < (originalState.current?.images.length || 0)) {
       // Removing existing image - update form images to track what's been removed
@@ -219,7 +225,7 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!user) {
       toast.error('You must be logged in to save SREF codes');
       return;
@@ -228,15 +234,15 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
     if (!(await validateForm())) return;
 
     setIsSubmitting(true);
-    
+
     let uploadedImageUrls: string[] = [];
-    
+
     try {
       console.log('Starting form submission...');
       console.log('User ID:', user.id);
       console.log('Form data:', formData);
       console.log('Image files:', imageFiles);
-      
+
       // Upload new images if any
       if (imageFiles.length > 0) {
         toast.info('Uploading images...');
@@ -245,19 +251,19 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
         uploadedImageUrls = uploadedImages.map(img => img.url);
         console.log('Uploaded image URLs:', uploadedImageUrls);
       }
-      
+
       // Determine what fields have actually changed
       const textFieldsChanged = hasTextFieldsChanged();
       const tagsChanged = hasTagsChanged();
       const imagesChanged = hasImagesChanged();
-      
+
       console.log('🔍 Change detection results:', {
         textFieldsChanged,
         tagsChanged,
         imagesChanged,
-        isNewCreation: !editingCode
+        isNewCreation: !editingCode,
       });
-      
+
       // Build selective update payload - only include changed fields
       interface SREFSubmissionData {
         user_id: string;
@@ -275,11 +281,11 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
           tagsToAdd: string[];
         };
       }
-      
+
       const srefData: SREFSubmissionData = {
-        user_id: user.id // Always include user_id
+        user_id: user.id, // Always include user_id
       };
-      
+
       // Only include text fields if they changed
       if (textFieldsChanged) {
         srefData.title = formData.title.trim();
@@ -287,7 +293,7 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
         srefData.sv_version = formData.version === 'SV6' ? 6 : 4;
         console.log('📝 Including text fields in update');
       }
-      
+
       // Only include tags if they changed
       if (tagsChanged) {
         if (!originalState.current) {
@@ -298,31 +304,31 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
           // Editing - implement granular tag diffing
           const originalTags = originalState.current.tags;
           const currentTags = formData.tags;
-          
+
           // Find tags to delete (in original but not in current)
           const tagsToDelete = originalTags.filter(tag => !currentTags.includes(tag));
-          
+
           // Find tags to add (in current but not in original)
           const tagsToAdd = currentTags.filter(tag => !originalTags.includes(tag));
-          
+
           console.log('🔍 Tag diffing analysis:', {
             originalTags,
             currentTags,
             tagsToDelete,
-            tagsToAdd
+            tagsToAdd,
           });
-          
+
           // Send granular tag updates instead of full replacement
           if (tagsToDelete.length > 0 || tagsToAdd.length > 0) {
             srefData.tagDiff = {
               tagsToDelete,
-              tagsToAdd
+              tagsToAdd,
             };
             console.log('🏷️ Sending granular tag update:', srefData.tagDiff);
           }
         }
       }
-      
+
       // Only include images if they changed
       if (imagesChanged) {
         if (!originalState.current) {
@@ -334,32 +340,32 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
           // Editing - implement granular image diffing
           const originalImages = originalState.current.images;
           const currentImages = [...formData.images, ...uploadedImageUrls];
-          
+
           // Find images to delete (in original but not in current)
           const imagesToDelete = originalImages.filter(url => !currentImages.includes(url));
-          
+
           // Find images to add (in current but not in original)
           const imagesToAdd = currentImages.filter(url => !originalImages.includes(url));
-          
+
           console.log('🔍 Image diffing analysis:', {
             originalImages,
             currentImages,
             imagesToDelete,
             imagesToAdd,
-            uploadedImageUrls
+            uploadedImageUrls,
           });
-          
+
           // Send granular image updates instead of full replacement
           if (imagesToDelete.length > 0 || imagesToAdd.length > 0) {
             srefData.imageDiff = {
               imagesToDelete,
-              imagesToAdd
+              imagesToAdd,
             };
             console.log('📸 Sending granular image update:', srefData.imageDiff);
           }
         }
       }
-      
+
       console.log('SREF data to submit:', srefData);
 
       if (editingCode) {
@@ -377,9 +383,9 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
           code_value: formData.code_value.trim(),
           sv_version: formData.version === 'SV6' ? 6 : 4,
           tags: formData.tags,
-          images: [...formData.images, ...uploadedImageUrls]
+          images: [...formData.images, ...uploadedImageUrls],
         };
-        
+
         const result = await createSREFCode(createData);
         if (!result.success) {
           console.error('Create SREF code error:', result.error);
@@ -387,13 +393,13 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
         }
         toast.success('SREF code created successfully!');
       }
-      
+
       onSuccess?.();
     } catch (error: unknown) {
       console.error('Form submission error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       toast.error(`Failed to ${editingCode ? 'update' : 'create'} SREF code: ${errorMessage}`);
-      
+
       // Clean up uploaded images on error (only for new uploads, not existing ones)
       if (uploadedImageUrls.length > 0) {
         console.log('Cleaning up uploaded images due to error...');
@@ -433,7 +439,7 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
                 <Input
                   id="title"
                   value={formData.title}
-                  onChange={(e) => handleInputChange('title', e.target.value)}
+                  onChange={e => handleInputChange('title', e.target.value)}
                   placeholder="e.g., 90's comic book style"
                   className={form.formState.errors.title ? 'border-red-500' : ''}
                   required
@@ -444,7 +450,10 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
               </div>
               <div className="space-y-2">
                 <Label htmlFor="version">Version *</Label>
-                <Select value={formData.version} onValueChange={(value: 'SV4' | 'SV6') => handleInputChange('version', value)}>
+                <Select
+                  value={formData.version}
+                  onValueChange={(value: 'SV4' | 'SV6') => handleInputChange('version', value)}
+                >
                   <SelectTrigger className={form.formState.errors.version ? 'border-red-500' : ''}>
                     <SelectValue />
                   </SelectTrigger>
@@ -465,7 +474,7 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
               <Input
                 id="code_value"
                 value={formData.code_value}
-                onChange={(e) => handleInputChange('code_value', e.target.value)}
+                onChange={e => handleInputChange('code_value', e.target.value)}
                 placeholder="--sref 1234567890"
                 className={`font-mono ${form.formState.errors.code_value ? 'border-red-500' : ''}`}
                 required
@@ -475,7 +484,6 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
               )}
             </div>
 
-
             {/* Tags */}
             <div className="space-y-2">
               <Label>Tags</Label>
@@ -483,11 +491,11 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
                 <div className="flex gap-2">
                   <Input
                     value={newTag}
-                    onChange={(e) => handleTagInputChange(e.target.value)}
+                    onChange={e => handleTagInputChange(e.target.value)}
                     onFocus={handleTagInputFocus}
                     onBlur={handleTagInputBlur}
                     placeholder="Add a tag..."
-                    onKeyDown={(e) => {
+                    onKeyDown={e => {
                       if (e.key === 'Enter') {
                         e.preventDefault();
                         handleAddTag();
@@ -497,11 +505,16 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
                       }
                     }}
                   />
-                  <Button type="button" onClick={() => handleAddTag()} size="icon" variant="outline">
+                  <Button
+                    type="button"
+                    onClick={() => handleAddTag()}
+                    size="icon"
+                    variant="outline"
+                  >
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
-                
+
                 {/* Tag Suggestions Dropdown */}
                 {showTagSuggestions && filteredSuggestions.length > 0 && (
                   <div className="absolute top-full left-0 right-12 mt-1 bg-card border border-border rounded-md shadow-lg z-50 max-h-40 overflow-y-auto">
@@ -565,7 +578,7 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
                   Drag and drop or click to upload (max 6 images)
                 </p>
               </div>
-              
+
               {imagePreviews.length > 0 && (
                 <div className="grid grid-cols-3 gap-2 mt-4">
                   <AnimatePresence>
@@ -608,9 +621,13 @@ export default function SREFCodeForm({ editingCode, onSuccess, onCancel }: SREFC
               )}
               <Button type="submit" disabled={isSubmitting || imageUploading}>
                 <Save className="h-4 w-4 mr-2" />
-                {imageUploading ? `Uploading... ${Math.round(uploadProgress)}%` : 
-                 isSubmitting ? 'Saving...' : 
-                 editingCode ? 'Update' : 'Create'}
+                {imageUploading
+                  ? `Uploading... ${Math.round(uploadProgress)}%`
+                  : isSubmitting
+                    ? 'Saving...'
+                    : editingCode
+                      ? 'Update'
+                      : 'Create'}
               </Button>
             </div>
           </form>

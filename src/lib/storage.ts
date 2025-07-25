@@ -82,8 +82,15 @@ export class StorageService {
         tags: { operation: 'upload_image' },
         extra: { filename: file.name, fileSize: file.size },
       });
-      onProgress?.({ progress: 0, isUploading: false, error: error instanceof Error ? error.message : 'Unknown error' });
-      return { data: null, error: `Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}` };
+      onProgress?.({
+        progress: 0,
+        isUploading: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return {
+        data: null,
+        error: `Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      };
     }
   }
 
@@ -103,7 +110,7 @@ export class StorageService {
       const file = files[i];
       const baseProgress = (i / totalFiles) * 100;
       const fileProgress = (progress: UploadProgress) => {
-        const totalProgress = baseProgress + (progress.progress / totalFiles);
+        const totalProgress = baseProgress + progress.progress / totalFiles;
         onProgress?.({
           progress: totalProgress,
           isUploading: progress.isUploading,
@@ -112,7 +119,7 @@ export class StorageService {
       };
 
       const { data, error } = await this.uploadImage(file, userId, fileProgress);
-      
+
       if (data) {
         results.push(data);
       } else {
@@ -128,9 +135,7 @@ export class StorageService {
    */
   static async deleteImage(filename: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const { error } = await supabase.storage
-        .from(STORAGE_CONFIG.bucketName)
-        .remove([filename]);
+      const { error } = await supabase.storage.from(STORAGE_CONFIG.bucketName).remove([filename]);
 
       if (error) {
         captureException(error, {
@@ -161,15 +166,13 @@ export class StorageService {
       quality?: number;
     } = {}
   ): string {
-    const { data } = supabase.storage
-      .from(STORAGE_CONFIG.bucketName)
-      .getPublicUrl(filename, {
-        transform: {
-          width: options.width,
-          height: options.height,
-          quality: options.quality || STORAGE_CONFIG.compression.quality,
-        },
-      });
+    const { data } = supabase.storage.from(STORAGE_CONFIG.bucketName).getPublicUrl(filename, {
+      transform: {
+        width: options.width,
+        height: options.height,
+        quality: options.quality || STORAGE_CONFIG.compression.quality,
+      },
+    });
 
     return data.publicUrl;
   }
@@ -201,8 +204,11 @@ export class StorageService {
   /**
    * Compress image before upload (optional)
    */
-  static async compressImage(file: File, quality: number = STORAGE_CONFIG.compression.quality): Promise<File> {
-    return new Promise((resolve) => {
+  static async compressImage(
+    file: File,
+    quality: number = STORAGE_CONFIG.compression.quality
+  ): Promise<File> {
+    return new Promise(resolve => {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       const img = new Image();
@@ -221,11 +227,11 @@ export class StorageService {
 
         canvas.width = width;
         canvas.height = height;
-        
+
         ctx?.drawImage(img, 0, 0, width, height);
-        
+
         canvas.toBlob(
-          (blob) => {
+          blob => {
             if (blob) {
               const compressedFile = new File([blob], file.name, {
                 type: file.type,

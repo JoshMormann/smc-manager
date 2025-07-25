@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { LoginForm } from './LoginForm';
-import { RegisterForm } from './RegisterForm';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import PasswordResetScreen from './generated/PasswordResetScreen';
 import PasswordResetConfirmScreen from './generated/PasswordResetConfirmScreen';
+import LoginScreen from './generated/LoginScreen';
 import { Loader2 } from 'lucide-react';
 
 interface AuthGateProps {
@@ -12,7 +12,7 @@ interface AuthGateProps {
 
 export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
   const { user, loading, isPasswordRecovery, resetPassword, updatePassword } = useAuth();
-  const [isLogin, setIsLogin] = useState(true);
+  const { profile, loading: profileLoading, error: profileError } = useUserProfile(user);
   const [showPasswordReset, setShowPasswordReset] = useState(false);
   const [showPasswordResetConfirm, setShowPasswordResetConfirm] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
@@ -25,24 +25,16 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('access_token');
     const type = urlParams.get('type');
-    
+
     if ((token && type === 'recovery') || isPasswordRecovery) {
       setPasswordResetToken(token);
       setShowPasswordResetConfirm(true);
-      setIsLogin(false);
       // Clean up the URL
       if (token && type === 'recovery') {
         window.history.replaceState({}, document.title, window.location.pathname);
       }
     }
   }, [isPasswordRecovery]);
-
-  const handleForgotPassword = () => {
-    setShowPasswordReset(true);
-    setIsLogin(false);
-    setResetEmailSent(false);
-    setResetError(null);
-  };
 
   const handleSendResetEmail = async (email: string) => {
     setResetLoading(true);
@@ -65,7 +57,6 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
   const handleBackToLogin = () => {
     setShowPasswordReset(false);
     setShowPasswordResetConfirm(false);
-    setIsLogin(true);
     setResetEmailSent(false);
     setResetError(null);
     setPasswordResetToken(null);
@@ -82,7 +73,6 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
       } else {
         // Password updated successfully, redirect to login
         setShowPasswordResetConfirm(false);
-        setIsLogin(true);
         setPasswordResetToken(null);
       }
     } catch (_err) {
@@ -92,10 +82,13 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
     }
   };
 
-  // Show loading spinner while checking authentication
-  if (loading) {
+  // Show loading spinner while checking authentication or profile
+  if (loading || (user && profileLoading)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div
+        className="min-h-screen flex items-center justify-center bg-background"
+        data-testid="auth-loading"
+      >
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
           <p className="text-muted-foreground">Loading...</p>
@@ -104,11 +97,18 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
     );
   }
 
-
   // Show authentication forms if user is not authenticated OR if in password recovery mode
-  if (!user || isPasswordRecovery) {
+  // OR if user exists but profile is missing (for email users) and there's an error
+  const isOAuthUser = user?.app_metadata?.provider && user.app_metadata.provider !== 'email';
+  const needsAuth =
+    !user || isPasswordRecovery || (user && !profile && !isOAuthUser && profileError);
+
+  if (needsAuth) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div
+        className="min-h-screen flex items-center justify-center bg-background p-4"
+        data-testid="login-screen"
+      >
         <div className="w-full max-w-md">
           {showPasswordResetConfirm ? (
             <PasswordResetConfirmScreen
@@ -127,13 +127,8 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
               error={resetError}
               success={resetEmailSent}
             />
-          ) : isLogin ? (
-            <LoginForm 
-              onToggleForm={() => setIsLogin(false)}
-              onForgotPassword={handleForgotPassword}
-            />
           ) : (
-            <RegisterForm onToggleForm={() => setIsLogin(true)} />
+            <LoginScreen />
           )}
         </div>
       </div>

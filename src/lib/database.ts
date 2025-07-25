@@ -33,11 +33,14 @@ export type FolderUpdate = Database['public']['Tables']['folders']['Update'];
 // SREF Codes Operations
 export class SREFCodeService {
   // Get all SREF codes for the current user with images and tags
-  static async getUserSREFCodes(userId: string): Promise<{ data: SREFCode[] | null; error: Error | null }> {
+  static async getUserSREFCodes(
+    userId: string
+  ): Promise<{ data: SREFCode[] | null; error: Error | null }> {
     try {
       const { data: codes, error } = await supabase
         .from('sref_codes')
-        .select(`
+        .select(
+          `
           *,
           code_images (
             id,
@@ -47,7 +50,8 @@ export class SREFCodeService {
           code_tags (
             tag
           )
-        `)
+        `
+        )
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
@@ -57,11 +61,12 @@ export class SREFCodeService {
       }
 
       // Transform the data to match our expected format
-      const transformedCodes: SREFCode[] = codes?.map(code => ({
-        ...code,
-        images: code.code_images?.sort((a, b) => a.position - b.position) || [],
-        tags: code.code_tags?.map(tag => tag.tag) || []
-      })) || [];
+      const transformedCodes: SREFCode[] =
+        codes?.map(code => ({
+          ...code,
+          images: code.code_images?.sort((a, b) => a.position - b.position) || [],
+          tags: code.code_tags?.map(tag => tag.tag) || [],
+        })) || [];
 
       return { data: transformedCodes, error: null };
     } catch (error) {
@@ -71,11 +76,14 @@ export class SREFCodeService {
   }
 
   // Get a single SREF code by ID
-  static async getSREFCodeById(codeId: string): Promise<{ data: SREFCode | null; error: Error | null }> {
+  static async getSREFCodeById(
+    codeId: string
+  ): Promise<{ data: SREFCode | null; error: Error | null }> {
     try {
       const { data: code, error } = await supabase
         .from('sref_codes')
-        .select(`
+        .select(
+          `
           *,
           code_images (
             id,
@@ -85,7 +93,8 @@ export class SREFCodeService {
           code_tags (
             tag
           )
-        `)
+        `
+        )
         .eq('id', codeId)
         .single();
 
@@ -97,7 +106,7 @@ export class SREFCodeService {
       const transformedCode: SREFCode = {
         ...code,
         images: code.code_images?.sort((a, b) => a.position - b.position) || [],
-        tags: code.code_tags?.map(tag => tag.tag) || []
+        tags: code.code_tags?.map(tag => tag.tag) || [],
       };
 
       return { data: transformedCode, error: null };
@@ -108,7 +117,9 @@ export class SREFCodeService {
   }
 
   // Create a new SREF code
-  static async createSREFCode(srefCode: SREFCodeInsert): Promise<{ data: SREFCode | null; error: Error | null }> {
+  static async createSREFCode(
+    srefCode: SREFCodeInsert
+  ): Promise<{ data: SREFCode | null; error: Error | null }> {
     try {
       // Start a transaction-like operation
       const { data: newCode, error: codeError } = await supabase
@@ -117,7 +128,7 @@ export class SREFCodeService {
           user_id: srefCode.user_id,
           code_value: srefCode.code_value,
           sv_version: srefCode.sv_version,
-          title: srefCode.title
+          title: srefCode.title,
         })
         .select()
         .single();
@@ -132,12 +143,10 @@ export class SREFCodeService {
         const imageInserts = srefCode.images.map((imageUrl, index) => ({
           code_id: newCode.id,
           image_url: imageUrl,
-          position: index
+          position: index,
         }));
 
-        const { error: imagesError } = await supabase
-          .from('code_images')
-          .insert(imageInserts);
+        const { error: imagesError } = await supabase.from('code_images').insert(imageInserts);
 
         if (imagesError) {
           captureException(imagesError, { tags: { operation: 'create_sref_code_images' } });
@@ -149,12 +158,10 @@ export class SREFCodeService {
       if (srefCode.tags && srefCode.tags.length > 0) {
         const tagInserts = srefCode.tags.map(tag => ({
           code_id: newCode.id,
-          tag: tag
+          tag: tag,
         }));
 
-        const { error: tagsError } = await supabase
-          .from('code_tags')
-          .insert(tagInserts);
+        const { error: tagsError } = await supabase.from('code_tags').insert(tagInserts);
 
         if (tagsError) {
           captureException(tagsError, { tags: { operation: 'create_sref_code_tags' } });
@@ -171,20 +178,23 @@ export class SREFCodeService {
   }
 
   // Update an existing SREF code
-  static async updateSREFCode(codeId: string, updates: SREFCodeUpdate): Promise<{ data: SREFCode | null; error: Error | null }> {
+  static async updateSREFCode(
+    codeId: string,
+    updates: SREFCodeUpdate
+  ): Promise<{ data: SREFCode | null; error: Error | null }> {
     try {
       // Build selective update payload for main record
       const mainRecordUpdate: Database['public']['Tables']['sref_codes']['Update'] = {
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       };
-      
+
       // Only include fields that were actually provided
       if (updates.title !== undefined) mainRecordUpdate.title = updates.title;
       if (updates.code_value !== undefined) mainRecordUpdate.code_value = updates.code_value;
       if (updates.sv_version !== undefined) mainRecordUpdate.sv_version = updates.sv_version;
-      
+
       console.log('🔍 Updating main record with:', mainRecordUpdate);
-      
+
       // Update the main record
       const { data: updatedCode, error: codeError } = await supabase
         .from('sref_codes')
@@ -210,14 +220,14 @@ export class SREFCodeService {
       // 2. Delete only specific images by UUID: DELETE WHERE id IN (uuid1, uuid2)
       // 3. Insert only new images
       // 4. Investigate why current delete returns count 0 (RLS policies?)
-      
+
       // Handle images with granular diffing or full replacement
       if (updates.imageDiff) {
         // NEW: Granular image update approach
         const { imagesToDelete, imagesToAdd } = updates.imageDiff;
-        
+
         console.log('🔍 Granular image update:', { imagesToDelete, imagesToAdd });
-        
+
         // Delete specific images by URL
         if (imagesToDelete.length > 0) {
           const { error: deleteError, count: deletedCount } = await supabase
@@ -227,18 +237,18 @@ export class SREFCodeService {
             .in('image_url', imagesToDelete);
 
           if (deleteError) {
-            captureException(deleteError, { 
-              tags: { 
+            captureException(deleteError, {
+              tags: {
                 operation: 'granular_delete_images',
-                code_id: codeId 
-              } 
+                code_id: codeId,
+              },
             });
             console.error('🚨 Granular DELETE FAILED:', deleteError);
           } else {
             console.log(`✅ Granular delete: removed ${deletedCount} specific images`);
           }
         }
-        
+
         // Insert only new images
         if (imagesToAdd.length > 0) {
           // Get current max position to maintain order
@@ -248,13 +258,13 @@ export class SREFCodeService {
             .eq('code_id', codeId)
             .order('position', { ascending: false })
             .limit(1);
-            
+
           const startPosition = (maxPositionData?.[0]?.position ?? -1) + 1;
-          
+
           const imageInserts = imagesToAdd.map((imageUrl, index) => ({
             code_id: codeId,
             image_url: imageUrl,
-            position: startPosition + index
+            position: startPosition + index,
           }));
 
           const { error: imagesError, count: insertedCount } = await supabase
@@ -262,11 +272,11 @@ export class SREFCodeService {
             .insert(imageInserts, { count: 'exact' });
 
           if (imagesError) {
-            captureException(imagesError, { 
-              tags: { 
+            captureException(imagesError, {
+              tags: {
                 operation: 'granular_insert_images',
-                code_id: codeId 
-              } 
+                code_id: codeId,
+              },
             });
             console.error('Granular INSERT FAILED:', imagesError);
           } else {
@@ -276,7 +286,7 @@ export class SREFCodeService {
       } else if (updates.images !== undefined) {
         // FALLBACK: Full replacement for new creations or legacy calls
         console.log('🔄 Full image replacement (legacy mode)');
-        
+
         // Delete ALL existing images
         const { error: deleteError } = await supabase
           .from('code_images')
@@ -284,11 +294,11 @@ export class SREFCodeService {
           .eq('code_id', codeId);
 
         if (deleteError) {
-          captureException(deleteError, { 
-            tags: { 
+          captureException(deleteError, {
+            tags: {
               operation: 'legacy_delete_all_images',
-              code_id: codeId 
-            } 
+              code_id: codeId,
+            },
           });
         }
 
@@ -297,19 +307,17 @@ export class SREFCodeService {
           const imageInserts = updates.images.map((imageUrl, index) => ({
             code_id: codeId,
             image_url: imageUrl,
-            position: index
+            position: index,
           }));
 
-          const { error: imagesError } = await supabase
-            .from('code_images')
-            .insert(imageInserts);
+          const { error: imagesError } = await supabase.from('code_images').insert(imageInserts);
 
           if (imagesError) {
-            captureException(imagesError, { 
-              tags: { 
+            captureException(imagesError, {
+              tags: {
                 operation: 'legacy_insert_images',
-                code_id: codeId 
-              } 
+                code_id: codeId,
+              },
             });
           }
         }
@@ -319,9 +327,9 @@ export class SREFCodeService {
       if (updates.tagDiff) {
         // NEW: Granular tag update approach
         const { tagsToDelete, tagsToAdd } = updates.tagDiff;
-        
+
         console.log('🔍 Granular tag update:', { tagsToDelete, tagsToAdd });
-        
+
         // Delete specific tags by tag name
         if (tagsToDelete.length > 0) {
           const { error: deleteError, count: deletedCount } = await supabase
@@ -331,23 +339,23 @@ export class SREFCodeService {
             .in('tag', tagsToDelete);
 
           if (deleteError) {
-            captureException(deleteError, { 
-              tags: { 
+            captureException(deleteError, {
+              tags: {
                 operation: 'granular_delete_tags',
-                code_id: codeId 
-              } 
+                code_id: codeId,
+              },
             });
             console.error('🚨 Granular tag DELETE FAILED:', deleteError);
           } else {
             console.log(`✅ Granular delete: removed ${deletedCount} specific tags`);
           }
         }
-        
+
         // Insert only new tags
         if (tagsToAdd.length > 0) {
           const tagInserts = tagsToAdd.map(tag => ({
             code_id: codeId,
-            tag: tag
+            tag: tag,
           }));
 
           const { error: tagsError, count: insertedCount } = await supabase
@@ -355,11 +363,11 @@ export class SREFCodeService {
             .insert(tagInserts, { count: 'exact' });
 
           if (tagsError) {
-            captureException(tagsError, { 
-              tags: { 
+            captureException(tagsError, {
+              tags: {
                 operation: 'granular_insert_tags',
-                code_id: codeId 
-              } 
+                code_id: codeId,
+              },
             });
             console.error('Granular tag INSERT FAILED:', tagsError);
           } else {
@@ -369,7 +377,7 @@ export class SREFCodeService {
       } else if (updates.tags !== undefined) {
         // FALLBACK: Full replacement for new creations or legacy calls
         console.log('🔄 Full tag replacement (legacy mode)');
-        
+
         // Delete ALL existing tags
         const { error: deleteTagsError } = await supabase
           .from('code_tags')
@@ -377,11 +385,11 @@ export class SREFCodeService {
           .eq('code_id', codeId);
 
         if (deleteTagsError) {
-          captureException(deleteTagsError, { 
-            tags: { 
+          captureException(deleteTagsError, {
+            tags: {
               operation: 'legacy_delete_all_tags',
-              code_id: codeId 
-            } 
+              code_id: codeId,
+            },
           });
         }
 
@@ -389,19 +397,17 @@ export class SREFCodeService {
         if (updates.tags.length > 0) {
           const tagInserts = updates.tags.map(tag => ({
             code_id: codeId,
-            tag: tag
+            tag: tag,
           }));
 
-          const { error: tagsError } = await supabase
-            .from('code_tags')
-            .insert(tagInserts);
+          const { error: tagsError } = await supabase.from('code_tags').insert(tagInserts);
 
           if (tagsError) {
-            captureException(tagsError, { 
-              tags: { 
+            captureException(tagsError, {
+              tags: {
                 operation: 'legacy_insert_tags',
-                code_id: codeId 
-              } 
+                code_id: codeId,
+              },
             });
           }
         }
@@ -419,10 +425,7 @@ export class SREFCodeService {
   static async deleteSREFCode(codeId: string): Promise<{ error: Error | null }> {
     try {
       // The foreign key constraints will handle deleting related images and tags
-      const { error } = await supabase
-        .from('sref_codes')
-        .delete()
-        .eq('id', codeId);
+      const { error } = await supabase.from('sref_codes').delete().eq('id', codeId);
 
       if (error) {
         captureException(error, { tags: { operation: 'delete_sref_code' } });
@@ -436,11 +439,16 @@ export class SREFCodeService {
   }
 
   // Search SREF codes
-  static async searchSREFCodes(userId: string, query: string, tags: string[] = []): Promise<{ data: SREFCode[] | null; error: Error | null }> {
+  static async searchSREFCodes(
+    userId: string,
+    query: string,
+    tags: string[] = []
+  ): Promise<{ data: SREFCode[] | null; error: Error | null }> {
     try {
       let queryBuilder = supabase
         .from('sref_codes')
-        .select(`
+        .select(
+          `
           *,
           code_images (
             id,
@@ -450,7 +458,8 @@ export class SREFCodeService {
           code_tags (
             tag
           )
-        `)
+        `
+        )
         .eq('user_id', userId);
 
       // Add text search
@@ -458,8 +467,7 @@ export class SREFCodeService {
         queryBuilder = queryBuilder.or(`title.ilike.%${query}%,code_value.ilike.%${query}%`);
       }
 
-      const { data: codes, error } = await queryBuilder
-        .order('created_at', { ascending: false });
+      const { data: codes, error } = await queryBuilder.order('created_at', { ascending: false });
 
       if (error) {
         captureException(error, { tags: { operation: 'search_sref_codes' } });
@@ -467,11 +475,12 @@ export class SREFCodeService {
       }
 
       // Transform and filter by tags
-      let transformedCodes: SREFCode[] = codes?.map(code => ({
-        ...code,
-        images: code.code_images?.sort((a, b) => a.position - b.position) || [],
-        tags: code.code_tags?.map(tag => tag.tag) || []
-      })) || [];
+      let transformedCodes: SREFCode[] =
+        codes?.map(code => ({
+          ...code,
+          images: code.code_images?.sort((a, b) => a.position - b.position) || [],
+          tags: code.code_tags?.map(tag => tag.tag) || [],
+        })) || [];
 
       // Filter by tags if provided
       if (tags.length > 0) {
@@ -488,7 +497,9 @@ export class SREFCodeService {
   }
 
   // Get all unique tags for a user
-  static async getUserTags(userId: string): Promise<{ data: string[] | null; error: Error | null }> {
+  static async getUserTags(
+    userId: string
+  ): Promise<{ data: string[] | null; error: Error | null }> {
     try {
       // Get code IDs first
       const { data: codeIds, error: codeError } = await supabase
@@ -502,7 +513,7 @@ export class SREFCodeService {
       }
 
       const codeIdsList = codeIds?.map(c => c.id) || [];
-      
+
       if (codeIdsList.length === 0) {
         return { data: [], error: null };
       }
@@ -530,7 +541,9 @@ export class SREFCodeService {
 // Folder Operations
 export class FolderService {
   // Get all folders for a user
-  static async getUserFolders(userId: string): Promise<{ data: Folder[] | null; error: Error | null }> {
+  static async getUserFolders(
+    userId: string
+  ): Promise<{ data: Folder[] | null; error: Error | null }> {
     try {
       const { data: folders, error } = await supabase
         .from('folders')
@@ -551,7 +564,9 @@ export class FolderService {
   }
 
   // Create a new folder
-  static async createFolder(folder: FolderInsert): Promise<{ data: Folder | null; error: Error | null }> {
+  static async createFolder(
+    folder: FolderInsert
+  ): Promise<{ data: Folder | null; error: Error | null }> {
     try {
       const { data: newFolder, error } = await supabase
         .from('folders')
@@ -572,13 +587,16 @@ export class FolderService {
   }
 
   // Update a folder
-  static async updateFolder(folderId: string, updates: FolderUpdate): Promise<{ data: Folder | null; error: Error | null }> {
+  static async updateFolder(
+    folderId: string,
+    updates: FolderUpdate
+  ): Promise<{ data: Folder | null; error: Error | null }> {
     try {
       const { data: updatedFolder, error } = await supabase
         .from('folders')
         .update({
           ...updates,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', folderId)
         .select()
@@ -599,10 +617,7 @@ export class FolderService {
   // Delete a folder
   static async deleteFolder(folderId: string): Promise<{ error: Error | null }> {
     try {
-      const { error } = await supabase
-        .from('folders')
-        .delete()
-        .eq('id', folderId);
+      const { error } = await supabase.from('folders').delete().eq('id', folderId);
 
       if (error) {
         captureException(error, { tags: { operation: 'delete_folder' } });

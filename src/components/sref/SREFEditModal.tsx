@@ -19,7 +19,12 @@ interface SREFEditModalProps {
   onSuccess?: () => void;
 }
 
-export default function SREFEditModal({ isOpen, onClose, editingCode, onSuccess }: SREFEditModalProps) {
+export default function SREFEditModal({
+  isOpen,
+  onClose,
+  editingCode,
+  onSuccess,
+}: SREFEditModalProps) {
   const handleSuccess = () => {
     onSuccess?.();
     onClose();
@@ -33,11 +38,7 @@ export default function SREFEditModal({ isOpen, onClose, editingCode, onSuccess 
             {editingCode ? 'Edit SREF Code' : 'Create New SREF Code'}
           </DialogTitle>
         </DialogHeader>
-        <SREFCodeForm
-          editingCode={editingCode}
-          onSuccess={handleSuccess}
-          onCancel={onClose}
-        />
+        <SREFCodeForm editingCode={editingCode} onSuccess={handleSuccess} onCancel={onClose} />
       </DialogContent>
     </Dialog>
   );
