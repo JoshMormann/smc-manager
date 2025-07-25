@@ -11,7 +11,16 @@ interface AuthGateProps {
 }
 
 export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
-  const { user, loading, isPasswordRecovery, resetPassword, updatePassword } = useAuth();
+  const {
+    user,
+    loading,
+    isPasswordRecovery,
+    signIn,
+    signInWithGoogle,
+    signInWithDiscord,
+    resetPassword,
+    updatePassword,
+  } = useAuth();
   const { profile, loading: profileLoading, error: profileError } = useUserProfile(user);
   const [showPasswordReset, setShowPasswordReset] = useState(false);
   const [showPasswordResetConfirm, setShowPasswordResetConfirm] = useState(false);
@@ -82,6 +91,52 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
     }
   };
 
+  // Handle email login
+  const handleEmailLogin = async (email: string, password: string, rememberMe: boolean) => {
+    try {
+      const { error } = await signIn(email, password);
+      if (error) {
+        setResetError(error.message);
+      }
+      // Success case is handled by the auth context automatically
+    } catch (err) {
+      setResetError('An unexpected error occurred. Please try again.');
+    }
+  };
+
+  // Handle Google SSO login
+  const handleGoogleLogin = async () => {
+    try {
+      const { error } = await signInWithGoogle();
+      if (error) {
+        setResetError(error.message);
+      }
+    } catch (err) {
+      setResetError('An unexpected error occurred. Please try again.');
+    }
+  };
+
+  // Handle Discord SSO login
+  const handleDiscordLogin = async () => {
+    try {
+      const { error } = await signInWithDiscord();
+      if (error) {
+        setResetError(error.message);
+      }
+    } catch (err) {
+      setResetError('An unexpected error occurred. Please try again.');
+    }
+  };
+
+  // Handle forgot password
+  const handleForgotPasswordClick = (email: string) => {
+    setShowPasswordReset(true);
+    // Pre-fill email if provided
+    if (email) {
+      handleSendResetEmail(email);
+    }
+  };
+
   // Show loading spinner while checking authentication or profile
   if (loading || (user && profileLoading)) {
     return (
@@ -128,7 +183,14 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
               success={resetEmailSent}
             />
           ) : (
-            <LoginScreen />
+            <LoginScreen
+              onEmailLogin={handleEmailLogin}
+              onGoogleLogin={handleGoogleLogin}
+              onDiscordLogin={handleDiscordLogin}
+              onForgotPassword={handleForgotPasswordClick}
+              error={resetError}
+              isLoading={loading}
+            />
           )}
         </div>
       </div>
