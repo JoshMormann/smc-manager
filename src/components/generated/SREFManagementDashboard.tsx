@@ -2,18 +2,17 @@
 
 import * as React from 'react';
 import { useState, useMemo, lazy, Suspense } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import {
-  Home,
-  Folder,
+  Library,
+  Heart,
+  Settings,
   Package,
   Compass,
   Search,
   Tag,
   Plus,
-  ChevronDown,
-  ChevronRight,
   Menu,
   X,
   LogOut,
@@ -21,11 +20,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Toaster } from '@/components/ui/sonner';
 import { toast } from 'sonner';
@@ -35,6 +31,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import StorageDebugPanel from '@/components/debug/StorageDebugPanel';
 import { SREFCode as DatabaseSREFCode } from '@/lib/database';
+import SREFCardGrid from '@/components/sref/SREFCardGrid';
 
 // Lazy load the edit modal since it's only used when editing
 const SREFEditModal = lazy(() => import('@/components/sref/SREFEditModal'));
@@ -206,7 +203,7 @@ const defaultFolders: FolderItem[] = [
 export default function SREFManagementDashboard({
   initialCodes = defaultSREFCodes,
   initialTags = defaultTags,
-  initialFolders = defaultFolders,
+  initialFolders: _initialFolders = defaultFolders,
 }: SREFManagementDashboardProps) {
   // Authentication
   const { user, signOut } = useAuth();
@@ -226,10 +223,9 @@ export default function SREFManagementDashboard({
 
   // State
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [activeTab, setActiveTab] = useState('home');
+  const [activeTab, setActiveTab] = useState('library');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [folders, setFolders] = useState<FolderItem[]>(initialFolders);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   type EditingCodeType = {
     id: string;
@@ -266,28 +262,6 @@ export default function SREFManagementDashboard({
   // Handle tag toggle
   const toggleTag = (tag: string) => {
     setSelectedTags(prev => (prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]));
-  };
-
-  // Handle folder toggle
-  const toggleFolder = (folderId: string) => {
-    const updateFolders = (folders: FolderItem[]): FolderItem[] => {
-      return folders.map(folder => {
-        if (folder.id === folderId) {
-          return {
-            ...folder,
-            isExpanded: !folder.isExpanded,
-          };
-        }
-        if (folder.children) {
-          return {
-            ...folder,
-            children: updateFolders(folder.children),
-          };
-        }
-        return folder;
-      });
-    };
-    setFolders(updateFolders(folders));
   };
 
   // Handle card click (copy SREF code)
@@ -358,22 +332,10 @@ export default function SREFManagementDashboard({
   // Sidebar navigation items
   const navigationItems: NavigationItem[] = [
     {
-      id: 'home',
-      label: 'Home',
-      icon: Home,
-      active: activeTab === 'home',
-    },
-    {
-      id: 'folders',
-      label: 'Folder Tree',
-      icon: Folder,
-      active: activeTab === 'folders',
-    },
-    {
-      id: 'packs',
-      label: 'Packs',
-      icon: Package,
-      active: activeTab === 'packs',
+      id: 'library',
+      label: 'Library',
+      icon: Library,
+      active: activeTab === 'library',
     },
     {
       id: 'discover',
@@ -381,52 +343,30 @@ export default function SREFManagementDashboard({
       icon: Compass,
       active: activeTab === 'discover',
     },
+    {
+      id: 'favorites',
+      label: 'Favorites',
+      icon: Heart,
+      active: activeTab === 'favorites',
+    },
+    {
+      id: 'packs',
+      label: 'Packs',
+      icon: Package,
+      active: activeTab === 'packs',
+    },
   ];
 
-  // Render folder tree
-  const renderFolderTree = (folders: FolderItem[], level = 0) => {
-    return folders.map(folder => (
-      <div key={folder.id} className={cn('select-none', level > 0 && 'ml-4')}>
-        <button
-          onClick={() => toggleFolder(folder.id)}
-          className="flex items-center gap-2 w-full p-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-md transition-colors"
-        >
-          {folder.children &&
-            (folder.isExpanded ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <ChevronRight className="h-4 w-4" />
-            ))}
-          <Folder className="h-4 w-4" />
-          <span>{folder.name}</span>
-        </button>
-        <AnimatePresence>
-          {folder.isExpanded && folder.children && (
-            <motion.div
-              initial={{
-                height: 0,
-                opacity: 0,
-              }}
-              animate={{
-                height: 'auto',
-                opacity: 1,
-              }}
-              exit={{
-                height: 0,
-                opacity: 0,
-              }}
-              transition={{
-                duration: 0.2,
-              }}
-              className="overflow-hidden"
-            >
-              {renderFolderTree(folder.children, level + 1)}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    ));
-  };
+  // Account settings items (shown at bottom of sidebar)
+  const accountItems: NavigationItem[] = [
+    {
+      id: 'settings',
+      label: 'Account Settings',
+      icon: Settings,
+      active: activeTab === 'settings',
+    },
+  ];
+
   return (
     <TooltipProvider>
       <div className="flex min-h-screen bg-background text-foreground">
@@ -486,15 +426,34 @@ export default function SREFManagementDashboard({
                 </Tooltip>
               ))}
             </nav>
-
-            {/* Folder Tree (when folders tab is active) */}
-            {activeTab === 'folders' && !sidebarCollapsed && (
-              <div className="mt-6">
-                <Separator className="mb-4" />
-                <div className="space-y-1">{renderFolderTree(folders)}</div>
-              </div>
-            )}
           </ScrollArea>
+
+          {/* Account Settings at Bottom */}
+          <div className="p-2 border-t border-sidebar-border">
+            {accountItems.map(item => (
+              <Tooltip key={item.id} delayDuration={0}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setActiveTab(item.id)}
+                    className={cn(
+                      'flex items-center gap-3 w-full p-3 text-sm rounded-md transition-colors',
+                      item.active
+                        ? 'bg-sidebar-primary text-sidebar-primary-foreground'
+                        : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                    )}
+                  >
+                    <item.icon className="h-4 w-4 flex-shrink-0" />
+                    {!sidebarCollapsed && <span>{item.label}</span>}
+                  </button>
+                </TooltipTrigger>
+                {sidebarCollapsed && (
+                  <TooltipContent side="right">
+                    <p>{item.label}</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            ))}
+          </div>
         </motion.aside>
 
         {/* Main Content */}
@@ -514,7 +473,7 @@ export default function SREFManagementDashboard({
                   />
                 </div>
                 {/* Action Buttons */}
-                {user && (
+                {user && activeTab === 'library' && (
                   <div className="flex items-center gap-4 ml-4">
                     <Button
                       onClick={handleAddNew}
@@ -522,22 +481,6 @@ export default function SREFManagementDashboard({
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       Add SREF Code
-                    </Button>
-                    <span className="text-sm text-muted-foreground">{user.email}</span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={async () => {
-                        try {
-                          await signOut();
-                        } catch (error) {
-                          console.error('Sign out error:', error);
-                        }
-                      }}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <LogOut className="h-4 w-4 mr-2" />
-                      Sign Out
                     </Button>
                   </div>
                 )}
@@ -590,152 +533,87 @@ export default function SREFManagementDashboard({
               </Alert>
             )}
 
-            {isLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {Array.from({
-                  length: 6,
-                }).map((_, i) => (
-                  <Card key={i} className="overflow-hidden">
-                    <CardContent className="p-0">
-                      <Skeleton className="h-48 w-full" />
-                      <div className="p-4 space-y-2">
-                        <Skeleton className="h-4 w-3/4" />
-                        <Skeleton className="h-3 w-1/2" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : filteredCodes.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="rounded-full bg-muted p-6 mb-4">
-                  <Search className="h-8 w-8 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">No SREF codes found</h3>
-                <p className="text-muted-foreground mb-4 max-w-md">
-                  {searchQuery || selectedTags.length > 0
-                    ? "Try adjusting your search or filters to find what you're looking for."
-                    : 'Get started by adding your first SREF code to organize your style references.'}
-                </p>
-                <Button onClick={handleAddNew}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add SREF Code
-                </Button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredCodes.map(code => (
-                  <motion.div
-                    key={code.id}
-                    initial={{
-                      opacity: 0,
-                      y: 20,
-                    }}
-                    animate={{
-                      opacity: 1,
-                      y: 0,
-                    }}
-                    transition={{
-                      duration: 0.3,
-                    }}
-                  >
-                    <Card
-                      className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow group"
-                      onClick={() => handleCardClick(code.code_value || '')}
-                      style={{
-                        paddingTop: '0px',
-                        paddingBottom: '0px',
-                      }}
-                    >
-                      <CardContent className="p-0">
-                        {/* Images */}
-                        <div className="grid grid-cols-3 gap-0">
-                          {(code.images || []).map((image, index) => (
-                            <figure key={index} className="aspect-square overflow-hidden">
-                              <img
-                                src={typeof image === 'string' ? image : image.image_url}
-                                alt={`${code.title} reference ${index + 1}`}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                loading="lazy"
-                                onError={e => {
-                                  const target = e.currentTarget;
-                                  target.onerror = null;
-                                  target.src =
-                                    'data:image/svg+xml;utf8,<svg width="300" height="300" xmlns="http://www.w3.org/2000/svg"><rect fill="%23f3f3f3" width="100%" height="100%"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="20" fill="%23999">Image unavailable</text></svg>';
-                                }}
-                              />
-                            </figure>
-                          ))}
-                        </div>
+            {/* Render content based on active tab */}
+            {activeTab === 'library' && (
+              <SREFCardGrid
+                codes={filteredCodes}
+                isLoading={isLoading}
+                error={error}
+                variant="library"
+                showEmptyCard={user !== null}
+                onCardClick={handleCardClick}
+                onCardEdit={handleCardEdit}
+                onCardDelete={handleCardDelete}
+                onCreateNew={handleAddNew}
+              />
+            )}
 
-                        {/* Card Content */}
-                        <div className="p-4">
-                          <div className="flex items-start justify-between mb-2">
-                            <h3 className="font-semibold text-card-foreground group-hover:text-primary transition-colors">
-                              {code.title}
-                            </h3>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="text-xs">
-                                {`SV${code.sv_version}`}
-                              </Badge>
-                              <div className="flex items-center gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={e => {
-                                    e.stopPropagation();
-                                    handleCardEdit(code.id);
-                                  }}
-                                >
-                                  <span className="sr-only">Edit</span>
-                                  <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                                  </svg>
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={e => {
-                                    e.stopPropagation();
-                                    if (user) {
-                                      handleCardDelete(code.id);
-                                    }
-                                  }}
-                                >
-                                  <span className="sr-only">Delete</span>
-                                  <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-                                    <path
-                                      fillRule="evenodd"
-                                      d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
-                                      clipRule="evenodd"
-                                    />
-                                  </svg>
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                          <p className="text-sm text-muted-foreground font-mono">
-                            {code.code_value}
-                          </p>
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {(code.tags || []).slice(0, 3).map(tag => (
-                              <Badge key={tag} variant="secondary" className="text-xs">
-                                {tag}
-                              </Badge>
-                            ))}
-                            {(code.tags || []).length > 3 && (
-                              <Badge variant="secondary" className="text-xs">
-                                +{(code.tags || []).length - 3}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
+            {activeTab === 'discover' && (
+              <div className="p-6">
+                <div className="text-center py-12">
+                  <Compass className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Discover Community Codes</h3>
+                  <p className="text-muted-foreground">
+                    Browse and discover SREF codes shared by the community. Coming soon!
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'favorites' && (
+              <div className="p-6">
+                <div className="text-center py-12">
+                  <Heart className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Your Favorites</h3>
+                  <p className="text-muted-foreground">
+                    Community SREF codes you've liked will appear here. Coming soon!
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'packs' && (
+              <div className="p-6">
+                <div className="text-center py-12">
+                  <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">SREF Packs</h3>
+                  <p className="text-muted-foreground">
+                    Curated collections of SREF codes will be available here. Coming soon!
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'settings' && (
+              <div className="p-6">
+                <div className="text-center py-12">
+                  <Settings className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Account Settings</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Manage your profile, subscription, and account preferences.
+                  </p>
+                  {user && (
+                    <div className="space-y-4 max-w-md mx-auto">
+                      <div className="text-sm text-muted-foreground">
+                        Signed in as: {user.email}
+                      </div>
+                      <Button
+                        variant="outline"
+                        onClick={async () => {
+                          try {
+                            await signOut();
+                          } catch (error) {
+                            console.error('Sign out error:', error);
+                          }
+                        }}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <LogOut className="h-4 w-4 mr-2" />
+                        Sign Out
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
