@@ -54,9 +54,9 @@ export default function SREFCardGrid({
   if (isLoading) {
     return (
       <section className="p-6" aria-label="Loading SREF codes">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="aspect-square">
+            <div key={i} style={{ aspectRatio: '1.68' }}>
               <Skeleton className="h-full w-full rounded-lg" />
             </div>
           ))}
@@ -106,7 +106,7 @@ export default function SREFCardGrid({
   // Main grid
   return (
     <section className="p-6" aria-label="SREF code collection">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
         {/* Existing SREF codes */}
         {codes.map(code => (
           <motion.div

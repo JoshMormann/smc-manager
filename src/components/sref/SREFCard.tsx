@@ -177,9 +177,10 @@ export default function SREFCard({
     return (
       <motion.div
         className={cn(
-          'relative aspect-square bg-card border border-dashed border-muted-foreground/20 rounded-lg overflow-hidden cursor-pointer hover:border-primary/50 transition-colors',
+          'relative bg-card border border-dashed border-muted-foreground/20 rounded-lg overflow-hidden cursor-pointer hover:border-primary/50 transition-colors',
           className
         )}
+        style={{ aspectRatio: '1.68' }}
         onClick={handleCardClick}
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
@@ -202,10 +203,8 @@ export default function SREFCard({
   // Main card variants (library/discover)
   return (
     <motion.div
-      className={cn(
-        'relative aspect-square bg-card rounded-lg overflow-hidden cursor-pointer group',
-        className
-      )}
+      className={cn('relative bg-card rounded-lg overflow-hidden cursor-pointer group', className)}
+      style={{ aspectRatio: '1.68' }}
       onClick={handleCardClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -220,23 +219,41 @@ export default function SREFCard({
 
       {/* Top Content */}
       <div className="absolute top-3 left-3 right-3 flex items-start justify-between z-10">
-        {/* SV Version Chip */}
-        {svVersion && (
-          <div
-            className="px-2 py-1 rounded text-xs font-semibold"
-            style={{
-              ...getSVChipStyle(svVersion),
-              fontFamily: 'DM Sans, system-ui, sans-serif',
-              fontSize: '12px',
-              lineHeight: '21px',
-            }}
-          >
-            SV{svVersion}
-          </div>
-        )}
+        {/* Left side: SV chip and title */}
+        <div className="flex items-center space-x-2 flex-1 min-w-0">
+          {/* SV Version Chip */}
+          {svVersion && (
+            <div
+              className="px-2 py-1 rounded text-xs font-semibold flex-shrink-0"
+              style={{
+                ...getSVChipStyle(svVersion),
+                fontFamily: 'DM Sans, system-ui, sans-serif',
+                fontSize: '12px',
+                lineHeight: '21px',
+              }}
+            >
+              SV{svVersion}
+            </div>
+          )}
+
+          {/* Title */}
+          {title && (
+            <h3
+              className="font-semibold text-white truncate"
+              style={{
+                fontFamily: 'DM Sans, system-ui, sans-serif',
+                fontSize: '16px',
+                lineHeight: '24px',
+                color: '#FCFCFD',
+              }}
+            >
+              {title}
+            </h3>
+          )}
+        </div>
 
         {/* Action Button */}
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 flex-shrink-0">
           {variant === 'library' ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -251,8 +268,21 @@ export default function SREFCard({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleEdit}>Edit</DropdownMenuItem>
-                <DropdownMenuItem onClick={handleDelete} className="text-destructive">
+                <DropdownMenuItem
+                  onClick={e => {
+                    e.stopPropagation();
+                    handleEdit(e);
+                  }}
+                >
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={e => {
+                    e.stopPropagation();
+                    handleDelete(e);
+                  }}
+                  className="text-destructive"
+                >
                   Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -273,21 +303,6 @@ export default function SREFCard({
 
       {/* Bottom Content */}
       <div className="absolute bottom-3 left-3 right-3 z-10">
-        {/* Title */}
-        {title && (
-          <h3
-            className="font-semibold mb-2 text-white truncate"
-            style={{
-              fontFamily: 'DM Sans, system-ui, sans-serif',
-              fontSize: '16px',
-              lineHeight: '24px',
-              color: '#FCFCFD',
-            }}
-          >
-            {title}
-          </h3>
-        )}
-
         {/* Tags */}
         <div className="flex flex-wrap gap-1">
           {tags.slice(0, 3).map(tag => (
@@ -344,7 +359,7 @@ export default function SREFCard({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="absolute inset-0 flex items-center justify-center z-20"
+          className="absolute inset-0 flex items-center justify-center z-5"
         >
           <div className="text-center space-y-2">
             <div
