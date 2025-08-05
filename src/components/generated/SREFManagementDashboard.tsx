@@ -165,9 +165,6 @@ const defaultTags = [
   'vintage',
   'photography',
   'sepia',
-  'abstract',
-  'minimalist',
-  'dark',
 ];
 const defaultFolders: FolderItem[] = [
   {

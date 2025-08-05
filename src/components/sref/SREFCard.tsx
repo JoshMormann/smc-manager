@@ -224,7 +224,7 @@ export default function SREFCard({
           {/* SV Version Chip */}
           {svVersion && (
             <div
-              className="px-2 py-1 rounded text-xs font-semibold flex-shrink-0"
+              className="px-2 py-1 rounded-full text-xs font-semibold flex-shrink-0"
               style={{
                 ...getSVChipStyle(svVersion),
                 fontFamily: 'DM Sans, system-ui, sans-serif',
@@ -343,7 +343,6 @@ export default function SREFCard({
           variant="ghost"
           size="icon"
           className="h-8 w-8 rounded-full border-0"
-          style={getBlurElementStyle()}
           onClick={e => {
             e.stopPropagation();
             handleCardClick();
