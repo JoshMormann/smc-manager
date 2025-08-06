@@ -374,10 +374,10 @@ export default function SREFManagementDashboard({
               ease: 'easeInOut',
             },
           }}
-          className="bg-sidebar border-r border-sidebar-border flex flex-col"
+          className="bg-sidebar flex flex-col"
         >
           {/* Sidebar Header */}
-          <div className="p-4 border-b border-sidebar-border">
+          <div className="p-4">
             <div className="flex items-center justify-between">
               {!sidebarCollapsed && (
                 <h1 className="text-lg font-semibold text-sidebar-foreground">SREF Manager</h1>
@@ -423,7 +423,7 @@ export default function SREFManagementDashboard({
           </ScrollArea>
 
           {/* Account Settings at Bottom */}
-          <div className="p-2 border-t border-sidebar-border">
+          <div className="p-2">
             {accountItems.map(item => (
               <Tooltip key={item.id} delayDuration={0}>
                 <TooltipTrigger asChild>
@@ -453,7 +453,7 @@ export default function SREFManagementDashboard({
         {/* Main Content */}
         <main className="flex-1 flex flex-col min-w-0">
           {/* Header with Search and Tag Filter */}
-          <header className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
+          <header className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <div className="p-6 space-y-4">
               <div className="flex items-center justify-between">
                 {/* Search Bar */}
