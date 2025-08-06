@@ -50,6 +50,19 @@ export default function SREFCard({
 }: SREFCardProps) {
   const [isHovered, setIsHovered] = useState(false);
 
+  // Build complete SREF command including SV version
+  const getCompleteCommand = () => {
+    if (!codeValue) return '';
+
+    // If we have an SV version, include it in the command
+    if (svVersion) {
+      return `${codeValue} --sv ${svVersion}`;
+    }
+
+    // Fallback to just the SREF code if no SV version
+    return codeValue;
+  };
+
   // Handle card click for copying
   const handleCardClick = () => {
     if (variant === 'empty') {
@@ -57,9 +70,10 @@ export default function SREFCard({
       return;
     }
 
-    if (codeValue) {
-      navigator.clipboard.writeText(codeValue);
-      toast.success('SREF code copied to clipboard!', {
+    const completeCommand = getCompleteCommand();
+    if (completeCommand) {
+      navigator.clipboard.writeText(completeCommand);
+      toast.success('SREF code with SV version copied to clipboard!', {
         duration: 2000,
         position: 'bottom-right',
       });
@@ -384,7 +398,7 @@ export default function SREFCard({
                 lineHeight: '21px',
               }}
             >
-              {codeValue}
+              {getCompleteCommand()}
             </div>
           </div>
         </motion.div>

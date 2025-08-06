@@ -261,13 +261,10 @@ export default function SREFManagementDashboard({
     setSelectedTags(prev => (prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]));
   };
 
-  // Handle card click (copy SREF code)
+  // Handle card click - copy is now handled by the card component itself
   const handleCardClick = (code: string) => {
-    navigator.clipboard.writeText(code);
-    toast.success('SREF code copied to clipboard!', {
-      duration: 2000,
-      position: 'bottom-right',
-    });
+    // No clipboard operation needed here - SREFCard handles the complete copy
+    // This function is kept for potential future use
   };
 
   // Handle card edit
