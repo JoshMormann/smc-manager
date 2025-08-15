@@ -77,7 +77,7 @@ export default function SREFCard({
         duration: 2000,
         position: 'bottom-right',
       });
-      onCardClick?.(codeValue);
+      onCardClick?.(codeValue || '');
     }
   };
 
