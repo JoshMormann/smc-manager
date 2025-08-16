@@ -363,12 +363,12 @@ export default function SREFManagementDashboard({
 
   return (
     <TooltipProvider>
-      <div className="flex min-h-screen bg-background text-foreground">
+      <div className="flex min-h-screen h-screen bg-background text-foreground">
         {/* Sidebar */}
         <motion.aside
           initial={false}
           animate={{
-            width: sidebarCollapsed ? 60 : 240,
+            width: sidebarCollapsed ? 60 : 180,
             transition: {
               duration: 0.3,
               ease: 'easeInOut',
@@ -402,7 +402,7 @@ export default function SREFManagementDashboard({
                     <button
                       onClick={() => setActiveTab(item.id)}
                       className={cn(
-                        'flex items-center gap-3 w-full p-3 text-sm rounded-md transition-colors',
+                        'flex items-center gap-3 w-full p-3 font-bold text-sm rounded-full transition-colors',
                         item.active
                           ? 'bg-sidebar-primary text-sidebar-primary-foreground'
                           : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
@@ -457,7 +457,7 @@ export default function SREFManagementDashboard({
             <div className="p-6 space-y-4">
               <div className="flex items-center justify-between">
                 {/* Search Bar */}
-                <div className="relative max-w-md flex-1">
+                <div className="relative w-full flex-1">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search SREF codes..."

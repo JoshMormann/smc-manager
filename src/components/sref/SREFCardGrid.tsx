@@ -79,7 +79,7 @@ export default function SREFCardGrid({
   // Empty state (no codes and no empty card)
   if (codes.length === 0 && !showEmptyCard) {
     return (
-      <section className="p-6" aria-label="No SREF codes found">
+      <section className="" aria-label="No SREF codes found">
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <div className="rounded-full bg-muted p-6 mb-4">
             <Search className="h-8 w-8 text-muted-foreground" aria-hidden="true" />
@@ -105,7 +105,7 @@ export default function SREFCardGrid({
 
   // Main grid
   return (
-    <section className="p-6" aria-label="SREF code collection">
+    <section className="" aria-label="SREF code collection">
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
         {/* Existing SREF codes */}
         {codes.map(code => (

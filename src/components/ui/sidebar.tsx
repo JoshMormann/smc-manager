@@ -20,9 +20,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 const SIDEBAR_COOKIE_NAME = 'sidebar_state';
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
-const SIDEBAR_WIDTH = '16rem';
-const SIDEBAR_WIDTH_MOBILE = '18rem';
-const SIDEBAR_WIDTH_ICON = '3rem';
+// Sidebar width constants removed - now using hardcoded values in animation specs
+// for reliable Framer Motion animations (see SidebarNavigation.tsx and SREFManagementDashboard.tsx)
 const SIDEBAR_KEYBOARD_SHORTCUT = 'b';
 
 type SidebarContext = {
@@ -123,8 +122,7 @@ function SidebarProvider({
           data-slot="sidebar-wrapper"
           style={
             {
-              '--sidebar-width': SIDEBAR_WIDTH,
-              '--sidebar-width-icon': SIDEBAR_WIDTH_ICON,
+              // CSS custom properties removed - using hardcoded animation values
               ...style,
             } as React.CSSProperties
           }
@@ -180,7 +178,7 @@ function Sidebar({
           className="bg-sidebar text-sidebar-foreground w-(--sidebar-width) p-0 [&>button]:hidden"
           style={
             {
-              '--sidebar-width': SIDEBAR_WIDTH_MOBILE,
+              // CSS custom property removed - using hardcoded animation values
             } as React.CSSProperties
           }
           side={side}

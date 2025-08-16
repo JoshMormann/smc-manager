@@ -178,7 +178,7 @@ export default function SidebarNavigation({
     <motion.aside
       initial={false}
       animate={{
-        width: collapsed ? 60 : 240,
+        width: collapsed ? 60 : 180,
         transition: {
           duration: 0.3,
           ease: 'easeInOut',
