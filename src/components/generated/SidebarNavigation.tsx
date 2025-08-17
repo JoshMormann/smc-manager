@@ -4,6 +4,7 @@ import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Home, Folder, Package, Compass, ChevronDown, ChevronRight, Menu, X } from 'lucide-react';
+import { sidebarNavVariants } from '@/components/ui/variants';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -131,7 +132,11 @@ export default function SidebarNavigation({
       <li key={folder.id} className={cn('select-none', level > 0 && 'ml-4')}>
         <button
           onClick={() => handleFolderToggle(folder.id)}
-          className="flex items-center gap-2 w-full p-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
+          className={sidebarNavVariants({
+            variant: 'secondary',
+            size: 'compact',
+            shape: 'rounded',
+          })}
           aria-expanded={folder.children ? folder.isExpanded : undefined}
           aria-label={`${folder.isExpanded ? 'Collapse' : 'Expand'} ${folder.name} folder`}
         >
@@ -225,16 +230,13 @@ export default function SidebarNavigation({
                   <TooltipTrigger asChild>
                     <button
                       onClick={() => handleNavClick(item.id)}
-                      className={cn(
-                        'flex items-center gap-3 w-full p-3 text-sm rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-ring',
-                        item.active
-                          ? 'bg-sidebar-primary text-sidebar-primary-foreground'
-                          : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                      )}
+                      className={sidebarNavVariants({
+                        variant: item.active ? 'primary' : 'secondary',
+                      })}
                       aria-current={item.active ? 'page' : undefined}
                       aria-label={item.label}
                     >
-                      <item.icon className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+                      <item.icon className="h-6 w-6 flex-shrink-0" aria-hidden="true" />
                       {!collapsed && <span>{item.label}</span>}
                     </button>
                   </TooltipTrigger>

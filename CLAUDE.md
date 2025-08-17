@@ -109,3 +109,55 @@ This is a **SREF (Style Reference) Manager** for AI image generation codes. The 
 - **Profile Creation**: Auto-create profiles for email users during sign-in
 
 This architecture supports a full-featured SREF management system with robust error handling, real-time updates, and comprehensive image management capabilities.
+
+## Design System & Code Standards
+
+### CVA (Class Variance Authority) Usage
+
+The project uses CVA for consistent component styling. **ALWAYS use CVA variants instead of inline styles**.
+
+**✅ DO:**
+
+```jsx
+// Use CVA variants from src/components/ui/variants.ts
+<button className={sidebarNavVariants({ variant: 'primary', shape: 'pill' })}>
+<Badge variant="secondary" className="py-px">  // Only override specific properties
+```
+
+**❌ DON'T:**
+
+```jsx
+// Don't use inline styles that bypass the design system
+<button className="flex items-center gap-3 p-3 text-sm rounded-md hover:bg-accent">
+<Badge className="px-4 py-2 text-lg rounded-full bg-blue-500">  // Recreating variants
+```
+
+### Available CVA Variants
+
+- **buttonVariants**: Standard buttons with variants (default, destructive, outline, secondary, ghost, link) and sizes (default, sm, lg, icon)
+- **badgeVariants**: Tags/badges with variants (default, secondary, destructive, outline)
+- **sidebarNavVariants**: Sidebar navigation buttons with variants (primary, secondary), sizes (default, compact), shapes (rounded, pill), and weights (normal, bold)
+- **toggleVariants**: Toggle buttons for interactive states
+
+### Styling Rules
+
+1. **Use CVA variants first** - Check `src/components/ui/variants.ts` before writing custom styles
+2. **Minimal overrides only** - Use `className` prop only for minor adjustments (e.g., `py-px` for padding tweaks)
+3. **No inline Tailwind combinations** - Don't recreate button/badge/nav patterns with raw Tailwind classes
+4. **Animation exceptions** - Animation values (Framer Motion) can remain hardcoded for reliability
+5. **Typography consistency** - Use established text sizes: `text-xs` (12px), `text-sm` (14px), `text-base` (16px), `text-lg` (18px)
+
+### Adding New Variants
+
+When you need a new component style:
+
+1. Add it to `variants.ts` using the CVA pattern
+2. Update this documentation
+3. Refactor any existing inline styles to use the new variant
+
+### Common Violations to Avoid
+
+- Creating "one-off" button styles instead of extending variants
+- Using arbitrary Tailwind combinations like `flex items-center gap-3 p-3 text-sm rounded-md transition-colors`
+- Duplicating styles across multiple components
+- Mixing CVA variants with extensive className overrides

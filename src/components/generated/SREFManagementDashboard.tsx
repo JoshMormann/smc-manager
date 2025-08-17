@@ -11,12 +11,12 @@ import {
   Package,
   Compass,
   Search,
-  Tag,
   Plus,
   Menu,
   X,
   LogOut,
 } from 'lucide-react';
+import { sidebarNavVariants } from '@/components/ui/variants';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -401,12 +401,12 @@ export default function SREFManagementDashboard({
                   <TooltipTrigger asChild>
                     <button
                       onClick={() => setActiveTab(item.id)}
-                      className={cn(
-                        'flex items-center gap-3 w-full p-3 font-bold text-sm rounded-full transition-colors',
-                        item.active
-                          ? 'bg-sidebar-primary text-sidebar-primary-foreground'
-                          : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                      )}
+                      className={sidebarNavVariants({
+                        variant: item.active ? 'primary' : 'secondary',
+                        size: 'default',
+                        shape: 'pill',
+                        weight: 'bold',
+                      })}
                     >
                       <item.icon className="h-4 w-4 flex-shrink-0" />
                       {!sidebarCollapsed && <span>{item.label}</span>}
@@ -429,12 +429,9 @@ export default function SREFManagementDashboard({
                 <TooltipTrigger asChild>
                   <button
                     onClick={() => setActiveTab(item.id)}
-                    className={cn(
-                      'flex items-center gap-3 w-full p-3 text-sm rounded-md transition-colors',
-                      item.active
-                        ? 'bg-sidebar-primary text-sidebar-primary-foreground'
-                        : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                    )}
+                    className={sidebarNavVariants({
+                      variant: item.active ? 'primary' : 'secondary',
+                    })}
                   >
                     <item.icon className="h-4 w-4 flex-shrink-0" />
                     {!sidebarCollapsed && <span>{item.label}</span>}
@@ -492,7 +489,6 @@ export default function SREFManagementDashboard({
                     )}
                     onClick={() => toggleTag(tag)}
                   >
-                    <Tag className="h-3 w-3 mr-1" />
                     {tag}
                   </Badge>
                 ))}
